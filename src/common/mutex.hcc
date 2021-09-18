@@ -1,0 +1,14 @@
+//-*-C++-*-
+//
+//! \file common/mutex.hcc
+//
+//! Implementations of various in-line template methods for the mutex
+//! implementation
+//
+
+#ifndef COMMON_MUTEX_HCC
+#define COMMON_MUTEX_HCC
+
+
+#endif
+

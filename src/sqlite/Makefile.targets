@@ -1,0 +1,20 @@
+# -*-Makefile-*-
+#
+# Target definitions for SQLite compilation
+#
+# $Id: Makefile.targets,v 1.2 2013/04/27 14:35:16 joe Exp $
+#
+
+BUILD_TARGETS += $(TARGET_PATH)/sqlite/libsqlite$(LOEXT)
+
+src-sqlite-sources := sqlite3
+all-sources += $(foreach f, $(src-sqlite-sources), sqlite/$(f))
+$(TARGET_PATH)/sqlite/libsqlite$(LOEXT): \
+ $(foreach f, $(src-sqlite-sources), $(TARGET_PATH)/sqlite/$(f)$(OEXT))
+	$(call liblink, $@, $^)
+
+CXXFLAGS_sqlite := -DSQLITE_THREADSAFE=2
+
+# Do not run analysis on sqlite - it has defects and we cannot do
+# anything about that now
+COV_OMIT_sqlite3.c := 1

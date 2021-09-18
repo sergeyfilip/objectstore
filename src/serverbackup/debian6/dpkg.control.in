@@ -1,0 +1,8 @@
+Package: serverbackup
+Version: #VERSION#
+Section: unknown
+Priority: optional
+Architecture: amd64
+Depends: libc6, libstdc++6, libssl0.9.8
+Maintainer: The Keepit Team <keepit@evalesco.com>
+Description: "Keepit Simple" server backup

@@ -1,0 +1,35 @@
+# -*-Makefile-*-
+#
+# $Id: Makefile.tools.ips,v 1.3 2013/02/11 12:59:52 joe Exp $
+#
+# Rules for working with the Solaris IPS packaging system
+#
+
+
+$(TARGET_PATH)/%.p5m: src/%.p5m.in
+# Perform simple substitutions on manifests
+	mkdir -p $(dir $@)
+	sed -e 's,@@VERSION@@,$(VERSION),g' \
+	-e 's,@@BUILDNO@@,$(BUILDNO),g' \
+	-e 's,@@TARGET_PATH@@,$(TARGET_PATH),g' \
+	-e 's,@@ARCH_NAME@@,$(ARCH_NAME),g' \
+	< $< > $@
+# Configure lint
+	echo "[pkglint]" > $(TARGET_PATH)/.pkglint.'$(notdir $@)'
+	echo "pkglint.exclude: pkg.lint.opensolaris.OpenSolarisManifestChecker.missing_attrs" >> $(TARGET_PATH)/.pkglint.'$(notdir $@)'
+# See if manifest is somewhat reasonable
+	pkglint -f $(TARGET_PATH)/.pkglint.'$(notdir $@)' $@
+	rm $(TARGET_PATH)/.pkglint.'$(notdir $@)'
+
+
+$(TARGET_PATH)/%.p5p: $(TARGET_PATH)/%.p5m
+# Create repository for this
+	rm -f $@
+	rm -rf $(TARGET_PATH)/scratch-repo-'$(notdir $@)'
+	pkgrepo create $(TARGET_PATH)/scratch-repo-'$(notdir $@)'
+	pkgrepo -s $(TARGET_PATH)/scratch-repo-'$(notdir $@)' set publisher/prefix=evalesco.com
+# Send our package to the repository
+	pkgsend -s $(TARGET_PATH)/scratch-repo-'$(notdir $@)' publish -d . $<
+	pkgrepo -s $(TARGET_PATH)/scratch-repo-'$(notdir $@)' info
+# Create repository archive
+	pkgrecv -s $(TARGET_PATH)/scratch-repo-'$(notdir $@)' -a -d $@ "*"

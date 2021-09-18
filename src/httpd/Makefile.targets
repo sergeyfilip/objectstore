@@ -1,0 +1,30 @@
+# -*-Makefile-*-
+#
+# Target definitions for httpd files
+#
+# $Id: Makefile.targets,v 1.4 2013/05/30 21:22:45 vg Exp $
+#
+
+BUILD_TARGETS += $(TARGET_PATH)/httpd/libhttpd$(LOEXT)
+REGRESS_TARGETS += regress-httpd
+
+src-httpd-sources := httpd request processor headers reply httpclient
+all-sources += $(foreach f, $(src-httpd-sources), httpd/$(f))
+$(TARGET_PATH)/httpd/libhttpd$(LOEXT): \
+ $(foreach f, $(src-httpd-sources), $(TARGET_PATH)/httpd/$(f)$(OEXT))
+	$(call liblink, $@, $^)
+
+
+src-httpd-test-httpd-sources := test_httpd
+src-httpd-test-httpd-libs := httpd common xml
+all-sources += $(foreach f, $(src-httpd-test-httpd-sources), httpd/$(f))
+$(TARGET_PATH)/httpd/test_httpd$(EEXT): \
+ $(foreach l, $(src-httpd-test-httpd-libs), $(TARGET_PATH)/$(l)/lib$(l)$(LOEXT)) \
+ $(foreach f, $(src-httpd-test-httpd-sources), $(TARGET_PATH)/httpd/$(f)$(OEXT)) \
+ $(TARGET_PATH)/version$(OEXT)
+	$(call cxxlink, $@, $^)
+
+.PHONY: regress-httpd
+regress-httpd: $(TARGET_PATH)/httpd/test_httpd$(EEXT)
+# Test the web server manager
+#	$(TARGET_PATH)/httpd/test_httpd$(EEXT) "$$[ $${UID} + 1024 ]"

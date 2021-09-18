@@ -1,0 +1,100 @@
+<?xml version='1.0' encoding='utf-8'?>
+<Wix xmlns='http://schemas.microsoft.com/wix/2006/wi'>
+  <Product Name='Keepit PC Connector'
+           Id='*'
+           UpgradeCode='A56E2CBE-D335-11E2-B28A-005056AA814C'
+           Language='1033' Codepage='1252'
+           Manufacturer='Keepit A/S'
+           Version='@VERSION@'>
+    <Package Id='*' Keywords='Installer' Description='Keepit PC Connector'
+             Compressed='yes' Platform='@MSIPLATFORM@' InstallerVersion='200'
+             InstallScope='perUser' InstallPrivileges='elevated'/>
+    <MajorUpgrade AllowDowngrades="yes" Disallow="no" />
+	<Media Id='1' Cabinet='keepit.cab' EmbedCab='yes'/>
+
+    <Directory Id='TARGETDIR' Name='SourceDir'>
+      <!-- Application installation files -->
+      <Directory Id='LocalAppDataFolder' Name='progfiles'>
+        <Directory Id='INSTALLDIR' Name='Keepit Connector'>
+          <!-- The executable gets its own component because it will
+               frequently be upgraded -->
+          <Component Id='MainExecutable' Guid='a88d0f2c-d336-11e2-b26a-005056aa814c'>
+            <File Id='keepitexe' Name='keepitw.exe' Source='keepitw.exe'/>
+            <RegistryValue Root='HKCU' Key='Software\[Manufacturer]\[ProductName]'
+                           Type='string' Name='MainExecutable' Value='' KeyPath='yes'/>
+          </Component>
+          <!-- The DLLs get their own component because they are
+               rarely upgraded -->
+          <Component Id='MainDLLs' Guid='d215f462-d336-11e2-befb-005056aa814c'>
+            <File Id='qtcore' Name='QtCore4.dll' Source='QtCore4.dll'/>
+            <File Id='qtgui' Name='QtGui4.dll' Source='QtGui4.dll'/>
+            <File Id='cr' Name='@MSVCRDLL@' Source='@MSVCRDLL@'/>
+            <File Id='cp' Name='@MSVCPDLL@' Source='@MSVCPDLL@'/>
+            <RegistryValue Root='HKCU' Key='Software\[Manufacturer]\[ProductName]'
+                           Type='string' Name='MainDLLs' Value='' KeyPath='yes'/>
+          </Component>
+          <!-- Miscellaneous application support files such as CA
+               bundle and skeleton configuration gets its own
+               component too -->
+          <Component Id='MiscAppFiles' Guid='F74291FA-D336-11E2-9920-005056AA814C'>
+            <File Id='ca' Name='ca-bundle.crt' Source='ca-bundle.crt'/>
+
+            <RemoveFolder Id='INSTALLDIR' On='uninstall'/>
+            <RegistryValue Root='HKCU' Key='Software\[Manufacturer]\[ProductName]'
+                           Type='string' Name='MiscAppFiles' Value='' KeyPath='yes'/>
+          </Component>
+        </Directory>
+      </Directory>
+
+      <!-- Program files menu entry -->
+      <Directory Id='ProgramMenuFolder'>
+        <Directory Id='ProgramMenuDir' Name='Keepit'>
+          <Component Id='ProgramMenuShortcut' Guid='19391e60-d3a4-11e2-b60e-005056aa814c'>
+            <Shortcut Id='StartMenuShortcut'
+                      Directory='ProgramMenuDir'
+                      Name='Keepit'
+                      Target='[INSTALLDIR]keepitw.exe'
+                      WorkingDirectory='INSTALLDIR'
+                      Icon='keepitw.exe' IconIndex='0'/>
+            <RemoveFolder Id='ProgramMenuDir' On='uninstall'/>
+            <RegistryValue Root='HKCU' Key='Software\[Manufacturer]\[ProductName]'
+                           Type='string' Name='Program' Value='' KeyPath='yes'/>
+          </Component>
+        </Directory>
+      </Directory>
+
+      <!-- Startup menu item -->
+      <Directory Id='StartupFolder'>
+        <Component Id='StartupItemShortcut' Guid='079C6A54-D39F-11E2-818C-005056AA814C'>
+          <Shortcut Id='StartupItemShortcut'
+                    Directory='StartupFolder'
+                    Name='Keepit Connector'
+                    Target='[INSTALLDIR]keepitw.exe'
+                    WorkingDirectory='INSTALLDIR'
+                    Icon='keepitw.exe'/>
+          <RegistryValue Root='HKCU' Key='Software\[Manufacturer]\[ProductName]'
+                         Type='string' Name='Startup' Value='' KeyPath='yes'/>
+        </Component>
+      </Directory>
+    </Directory>
+
+    <Icon Id='keepitw.exe' SourceFile='keepitw.exe'/>
+
+    <!-- Just one feature - we're a simple package -->
+    <Feature Id='Complete' Level='1'>
+      <ComponentRef Id='MainExecutable'/>
+      <ComponentRef Id='MainDLLs'/>
+      <ComponentRef Id='MiscAppFiles'/>
+      <ComponentRef Id='ProgramMenuShortcut'/>
+      <ComponentRef Id='StartupItemShortcut'/>
+    </Feature>
+
+    <!-- Run the application after install -->
+    <CustomAction Id='LaunchFile' FileKey='keepitexe' ExeCommand='' Return='asyncNoWait'/>
+
+    <InstallExecuteSequence>
+      <Custom Action ='LaunchFile' After='InstallFinalize'/>
+    </InstallExecuteSequence>
+
+  </Product>
+</Wix>

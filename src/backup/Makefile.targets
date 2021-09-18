@@ -1,0 +1,15 @@
+# -*-Makefile-*-
+#
+# Target definitions for client library files
+#
+# $Id: Makefile.targets,v 1.3 2013/10/06 11:48:08 vg Exp $
+#
+
+BUILD_TARGETS += $(TARGET_PATH)/backup/libbackup$(LOEXT)
+
+src-backup-sources := upload metatree utils dir_monitor
+all-sources += $(foreach f, $(src-backup-sources), backup/$(f))
+$(TARGET_PATH)/backup/libbackup$(LOEXT): \
+ $(foreach f, $(src-backup-sources), $(TARGET_PATH)/backup/$(f)$(OEXT))
+	$(call liblink, $@, $^)
+

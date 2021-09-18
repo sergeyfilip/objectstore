@@ -1,0 +1,143 @@
+# -*-Makefile-*-
+#
+# Makefile for the Windows native client
+#
+
+BUILD_TARGETS += $(TARGET_PATH)/winbackup/keepitw$(EEXT)
+
+
+# File and password used for signing executables
+SIGNATURE_FILE := src/winbackup/keepit_org_cert.2012.pfx
+SIGNATURE_PASSWORD := adv43727
+SIGNATURE_DESCRIPTION := "Keepit online backup"
+SIGNATURE_URL := "http://www.keepit.com"
+
+src-winbackup-keepitw-sources := main utils tray tray.moc keepitw.res	\
+                                  tracedest tracedest.moc signin 	\
+                                 signin.moc svccfg status status.moc	\
+                                 visitweb visitweb.moc status.moc	\
+                                 appupdater logout logout.moc
+
+src-winbackup-keepitw-libs := common xml client backup sqlite
+all-sources += $(foreach f, $(src-winbackup-keepitw-sources), winbackup/$(f))
+
+$(TARGET_PATH)/winbackup/keepitw$(EEXT): \
+ $(foreach l, $(src-winbackup-keepitw-libs), \
+              $(TARGET_PATH)/$(l)/lib$(l)$(LOEXT)) \
+ $(foreach f, $(src-winbackup-keepitw-sources), \
+              $(TARGET_PATH)/winbackup/$(f)$(OEXT)) \
+ $(TARGET_PATH)/version$(OEXT) \
+ $(TARGET_PATH)/winbackup/ver.res
+	$(call cxxlink, $@, $^)
+	@echo "Signing executable keepitw" 
+	signtool sign -f $(SIGNATURE_FILE) -p $(SIGNATURE_PASSWORD) \
+		-d $(SIGNATURE_DESCRIPTION) -du $(SIGNATURE_URL) \
+		-t http://timestamp.verisign.com/scripts/timstamp.dll $(TARGET_PATH)/winbackup/keepitw.exe
+
+
+.PHONY: package-winbackup-msi
+package-winbackup-msi: $(TARGET_PATH)/winbackup/keepit-$(VERSION)-$(BUILDNO)-$(ARCH_NAME).msi \
+		       $(TARGET_PATH)/winbackup/update-$(ARCH_NAME)-$(BUILDNO).tar
+
+$(TARGET_PATH)/winbackup/keepit-$(VERSION)-$(BUILDNO)-$(ARCH_NAME).msi: \
+	$(TARGET_PATH)/winbackup/installer.wixobj \
+	src/winbackup/Makefile.targets \
+	$(TARGET_PATH)/winbackup/keepitw$(EEXT) \
+	$(TARGET_PATH)/winbackup/$(MSVCRDLL) \
+	$(TARGET_PATH)/winbackup/$(MSVCPDLL) \
+	$(TARGET_PATH)/winbackup/QtCore4.dll \
+	$(TARGET_PATH)/winbackup/QtGui4.dll \
+	$(TARGET_PATH)/winbackup/ca-bundle.crt
+# Simply run the 'light' utility to link the wixobj with the sources into an msi
+#
+# ICE91 is irrelevant since our package is to be run perUser only.
+#
+	light -sice:ICE91 -out $@ $<
+#
+# Now sign the installer package
+#
+	signtool sign -f src/winbackup/keepit_org_cert.2012.pfx -p adv43727 \
+		-d "Keepit online backup" -du "https://ws.keepit.com" \
+		-t http://timestamp.verisign.com/scripts/timstamp.dll $@
+
+
+$(TARGET_PATH)/winbackup/installer.wixobj: \
+	$(TARGET_PATH)/winbackup/installer.wix
+# Run the 'candle' utility to compile a wixobj file for linking
+	candle -out $@ $<
+
+$(TARGET_PATH)/winbackup/installer.wix: \
+	src/winbackup/installer.wix.in \
+	Makefile src/winbackup/Makefile.targets
+# Perform replacements...
+	@$(SHELL) -ec '[ -d $(dir $@) ] || mkdir -p $(dir $@)'
+	sed -e 's,@VERSION@,$(VERSION),g' \
+	    -e 's,@BUILDNO@,$(BUILDNO),g' \
+	    -e 's,@MSIPLATFORM@,$(MSIPLATFORM),g' \
+	    -e 's,@MSVCRDLL@,$(MSVCRDLL),g' \
+	    -e 's,@MSVCPDLL@,$(MSVCPDLL),g' \
+	    < $< > $@
+
+
+
+
+WBUPDIR := $(TARGET_PATH)/winbackup/update-$(ARCH_NAME)-$(BUILDNO)/$(ARCH_NAME)-$(BUILDNO)
+
+$(TARGET_PATH)/winbackup/update-$(ARCH_NAME)-$(BUILDNO).tar: \
+	$(TARGET_PATH)/winbackup/keepitw.exe
+	test -d $(WBUPDIR) && rm -r $(WBUPDIR) || true
+	mkdir -p $(WBUPDIR)
+	echo "<package>" > $(WBUPDIR)/package.xml
+	echo " <build>$(BUILDNO)</build>" >> $(WBUPDIR)/package.xml
+	echo " <file>keepitw.exe</file>" >> $(WBUPDIR)/package.xml
+	echo "</package>" >> $(WBUPDIR)/package.xml
+	cp $(TARGET_PATH)/winbackup/keepitw.exe $(WBUPDIR)/keepitw.exe
+	tar Ccf $(TARGET_PATH)/winbackup/update-$(ARCH_NAME)-$(BUILDNO) $@ $(ARCH_NAME)-$(BUILDNO)
+	@echo "Signing executable keepitw" 
+	signtool sign -f $(SIGNATURE_FILE) -p $(SIGNATURE_PASSWORD) \
+	-d $(SIGNATURE_DESCRIPTION) -du $(SIGNATURE_URL) \
+	-t http://timestamp.verisign.com/scripts/timstamp.dll $(TARGET_PATH)/winbackup/keepitw.exe
+
+
+
+$(TARGET_PATH)/winbackup/$(MSVCRDLL): $(MSDLLSRC)/$(MSVCRDLL)
+	@$(SHELL) -ec '[ -d $(dir $@) ] || mkdir -p $(dir $@)'
+	cp  "$<" "$@"
+
+$(TARGET_PATH)/winbackup/$(MSVCPDLL): $(MSDLLSRC)/$(MSVCPDLL)
+	@$(SHELL) -ec '[ -d $(dir $@) ] || mkdir -p $(dir $@)'
+	cp "$<" "$@"
+
+$(TARGET_PATH)/winbackup/QtCore4.dll: $(QTLIBDIR)/QtCore4.dll
+	@$(SHELL) -ec '[ -d $(dir $@) ] || mkdir -p $(dir $@)'
+	cp "$<" "$@"
+
+$(TARGET_PATH)/winbackup/QtGui4.dll: $(QTLIBDIR)/QtGui4.dll
+	@$(SHELL) -ec '[ -d $(dir $@) ] || mkdir -p $(dir $@)'
+	cp "$<" "$@"
+
+$(TARGET_PATH)/winbackup/ca-bundle.crt: ca-bundle.crt
+	@$(SHELL) -ec '[ -d $(dir $@) ] || mkdir -p $(dir $@)'
+	cp "$<" "$@"
+
+ifeq ($(BUILDNO),manual)
+NUMERICBUILDNO := 0
+else
+NUMERICBUILDNO := $(BUILDNO)
+endif
+
+$(TARGET_PATH)/winbackup/ver.rc: src/winbackup/ver.rc.in \
+	Makefile src/winbackup/Makefile.targets
+	sed -e 's,@BUILDNO@,$(NUMERICBUILDNO),g' \
+	    -e 's,@VERSION@,$(VERSION),g' \
+	    -e 's,@MAJORVERSION@,$(MAJORVERSION),g' \
+	    -e 's,@MINORVERSION@,$(MINORVERSION),g' \
+	    -e 's,@RELEASE@,$(RELEASE),g' \
+	    < $< > $@
+
+ifdef WINDOWSRC
+$(TARGET_PATH)/%.res: $(TARGET_PATH)/%.rc 
+# Make version file
+	@$(SHELL) -ec '[ -d $(dir $@) ] || mkdir -p $(dir $@)'
+	$(RC) $(basename $(nodir $<)) $< 
+endif

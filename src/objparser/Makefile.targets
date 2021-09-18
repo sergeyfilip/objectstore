@@ -1,0 +1,14 @@
+# -*-Makefile-*-
+#
+# Target definitions for objparser files
+#
+# $Id: Makefile.targets,v 1.1 2013/04/17 07:21:30 joe Exp $
+#
+
+BUILD_TARGETS += $(TARGET_PATH)/objparser/libobjparser$(LOEXT)
+
+src-objparser-sources := objparser
+all-sources += $(foreach f, $(src-objparser-sources), objparser/$(f))
+$(TARGET_PATH)/objparser/libobjparser$(LOEXT): \
+ $(foreach f, $(src-objparser-sources), $(TARGET_PATH)/objparser/$(f)$(OEXT))
+	$(call liblink, $@, $^)

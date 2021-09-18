@@ -1,0 +1,129 @@
+# -*-Makefile-*-
+#
+# $Id: Makefile.tools.ms_cc,v 1.5 2013/07/16 06:12:32 sf Exp $
+#
+# Configuration of the Intel compiler
+#
+
+# C4800 forcing value to bool 'true' or 'false' (performance warning)
+# C4244 'conversion' conversion from 'type1' to 'type2', possible loss of data
+# C4355 'this' : used in base member initializer list
+CPPFLAGS_WD = -wd4800 -wd4244 -wd4355
+
+CCFLAGS = -nologo -TC -Gd -WX
+CCSTATFLAGS = -nologo -TC -Gd -WX
+CXXFLAGS = -nologo -TP -GR -EHsc -WX -W3 $(CPPFLAGS_WD)
+CXXSTATFLAGS := $(CXXFLAGS)
+
+# Enable debug info if requested
+ifdef FLAG_DEVEL
+# -RTC1: http://msdn.microsoft.com/en-us/library/8wtf2dfz(VS.80).aspx
+	CCFLAGS += -Z7 -RTC1 -MDd
+	CCSTATFLAGS += -Z7 -RTC1 -MTd
+	CXXFLAGS += -Z7 -RTC1 -MDd
+	CXXSTATFLAGS += -Z7 -RTC1 -MTd
+else
+	CCFLAGS += -Z7 -RTC1 -MD
+	CCSTATFLAGS += -Z7 -RTC1 -MT
+	CXXFLAGS += -Zi -DNDEBUG -MD
+	CXXSTATFLAGS += -Zi -DNDEBUG -MT
+endif
+
+ifndef NODEPS
+	CCFLAGS += -showIncludes
+	CCCSTATFLAGS += -showIncludes
+	CXXFLAGS += -showIncludes
+	CXXSTATFLAGS += -showIncludes
+endif
+
+# Enable optimization if requested
+ifeq ($(OPTIMIZED),1)
+	CCFLAGS +=  -O2 -Oy-
+	CCSTATFLAGS +=  -O2 -Oy-
+	CXXFLAGS +=  -O2 -Oy-
+	CXXSTATFLAGS +=  -O2 -Oy-
+else
+	CCFLAGS += -Od
+	CCSTATFLAGS += -Od
+	CXXFLAGS += -Od
+	CXXSTATFLAGS += -Od
+endif
+
+#
+# Useful OS abstractions
+#
+
+# Current working directory (root of tree)
+TROOT := $(shell pwd)
+
+# Add platform defines
+CCFLAGS += $(PLATFORMDEFINES)
+CCSTATFLAGS += $(PLATFORMDEFINES)
+CXXFLAGS += $(PLATFORMDEFINES)
+CXXSTATFLAGS += $(PLATFORMDEFINES)
+
+# Extra include directories
+CCFLAGS += -Isrc -I$(TARGET_PATH)
+CCSTATFLAGS += -Isrc -I$(TARGET_PATH)
+CXXFLAGS += -Isrc -I$(TARGET_PATH)
+CXXSTATFLAGS += -Isrc -I$(TARGET_PATH)
+
+# Object file extension
+OEXT := .dyn_obj
+STOEXT := .st_obj
+LOEXT := .dyn_obj
+STLOEXT := .st_obj
+
+# Dependency files
+DEPEXT := .d
+
+CCDEPFLAGS = -DRUNNING_REPGEN $(CCFLAGS) -Zs 
+CXXDEPFLAGS = -DRUNNING_REPGEN $(CXXFLAGS) -Zs 
+RUN_CC_DEP = $(CC) $(CCDEPFLAGS)
+RUN_CXX_DEP = $(CXX) $(CXXDEPFLAGS)
+
+# Coverity compiler name
+COVCXX := cl
+
+#
+# On Windows, cov-translate cannot run in parallel. It correctly
+# detects database lock failures, but it cannot retry locking. We wrap
+# cov-translate so that we wait for a lock before running it...
+#
+RUNCOVTRANS := perl ./tools/seqrun.pl
+
+# Generate dependecies during compile
+#
+# C++ source to object file
+$(TARGET_PATH)/%$(OEXT): src/%.cc $(TARGET_PATH)/version.hh Makefile.arch.$(ARCH_NAME)
+	@$(SHELL) -ec '[ -d $(dir $@) ] || mkdir -p $(dir $@)'
+	$(CXX) $(CXXFLAGS) $(CXXFLAGS_$(basename $(notdir $<))) \
+	-Fd$(strip $@).pdb -c $< -Fo$@ \
+	| perl tools/filterccdep_ms.pl $(TROOT) $< $(TARGET_PATH)/ $@$(DEPEXT)
+	$(if $(GLOBALPREVENT), $(call cov-translate-cxx-source, $@, $<))
+
+$(TARGET_PATH)/%$(OEXT): $(TARGET_PATH)/%.cc $(TARGET_PATH)/version.hh Makefile.arch.$(ARCH_NAME)
+	@$(SHELL) -ec '[ -d $(dir $@) ] || mkdir -p $(dir $@)'
+	$(CXX) $(CXXFLAGS) $(CXXFLAGS_$(basename $(notdir $<))) \
+	-Fd$(strip $@).pdb -c $< -Fo$@ \
+	| perl tools/filterccdep_ms.pl $(TROOT) $< $(TARGET_PATH)/ $@$(DEPEXT)
+	$(if $(GLOBALPREVENT), $(call cov-translate-cxx-source, $@, $<))
+
+# C source to object file
+$(TARGET_PATH)/%$(OEXT): src/%.c $(TARGET_PATH)/version.hh Makefile.arch.$(ARCH_NAME)
+	@$(SHELL) -ec '[ -d $(dir $@) ] || mkdir -p $(dir $@)'
+	$(CC) $(CCFLAGS) $(CCFLAGS_$(basename $(notdir $<))) \
+	-Fd$(strip $@).pdb -c $< -Fo$@ \
+	| perl tools/filterccdep_ms.pl $(TROOT) $< $(TARGET_PATH)/ $@$(DEPEXT)
+	$(if $(GLOBALPREVENT), $(call cov-translate-cxx-source, $@, $<))
+
+# C++ source to static-link object file
+$(TARGET_PATH)/%$(STOEXT) %$(STOEXT): src/%.cc $(TARGET_PATH)/version.hh Makefile.arch.$(ARCH_NAME)
+	@$(SHELL) -ec '[ -d $(dir $@) ] || mkdir -p $(dir $@)'
+	$(CXX) $(CXXSTATFLAGS) $(CXXFLAGS_$(basename $(notdir $<))) \
+	-Fd$(strip $@).pdb -c $< -Fo$@ \
+	| perl tools/filterccdep_ms.pl $(TROOT) $< $(TARGET_PATH)/ $@$(DEPEXT)
+	$(if $(GLOBALPREVENT), $(call cov-translate-cxx-source, $@, $<))
+
+# C++ source to dependency file
+$(TARGET_PATH)/%$(DEPEXT) %$(DEPEXT): src/%.cc Makefile.arch.$(ARCH_NAME) $(TARGET_PATH)/version.hh

@@ -1,0 +1,73 @@
+# -*-Makefile-*-
+#
+# $Id: Makefile.tools.ms_ld,v 1.4 2013/07/15 07:56:42 sf Exp $
+#
+# Configuration of the Microsoft linker
+#
+#
+
+LLDFLAGS = -lib
+
+ifdef FLAG_DEVEL
+LDFLAGS := -incremental:no -nologo -debug -NODEFAULTLIB:msvcrt.lib \
+            advapi32.lib msvcrtd.lib ws2_32.lib Iphlpapi.lib shlwapi.lib \
+            setargv.obj netapi32.lib userenv.lib -stack:16777216
+STLDFLAGS := -incremental:no -nologo -debug \
+            advapi32.lib libcmtd.lib ws2_32.lib	userenv.lib \
+            Iphlpapi.lib setargv.obj netapi32.lib -stack:16777216
+else
+LDFLAGS := -incremental:no -nologo -manifest userenv.lib \
+            advapi32.lib msvcrt.lib ws2_32.lib Iphlpapi.lib shlwapi.lib	\
+            setargv.obj netapi32.lib -stack:16777216 -debug -opt:ref
+STLDFLAGS := -incremental:no -nologo advapi32.lib userenv.lib \
+            libcmt.lib ws2_32.lib Iphlpapi.lib setargv.obj \
+            netapi32.lib -stack:16777216 -debug -opt:ref
+endif
+
+
+DLLLDFLAGS = -incremental:no -nologo \
+	      ole32.lib netapi32.lib Iphlpapi.lib -dll
+
+# Executable file extension
+EEXT = .exe
+
+# Library extension
+LOEXT = .lib 
+
+# Shared library file extension
+LDSOEXT = .dll
+
+cclink = $(SHELL) -ec '[ -d $(dir $(1)) ] || mkdir -p $(dir $(1))';	\
+	 $(LD) $(LDFLAGS) $(LDFLAGS_$(basename $(notdir $(1))))	\
+               -manifest -out:$(strip $(1)) $(2); \
+	 mt.exe -manifest $(strip $(1)).manifest -outputresource:$(strip $(1))
+
+cxxlink= $(SHELL) -ec '[ -d $(dir $(1)) ] || mkdir -p $(dir $(1))';		\
+	 $(LD) $(LDFLAGS) $(LDFLAGS_$(basename $(notdir $(1))))	\
+               -pdb:$(strip $(1)).pdb -manifest -out:$(strip $(1)) $(2); \
+	 mt.exe -manifest $(strip $(1)).manifest -outputresource:$(strip $(1))
+
+stcxxlink= $(SHELL) -ec '[ -d $(dir $(1)) ] || mkdir -p $(dir $(1))';		\
+	 $(LD) $(STLDFLAGS) $(LDFLAGS_$(basename $(notdir $(1))))	\
+               -pdb:$(strip $(1)).pdb -out:$(strip $(1)) $(2)
+
+cxxlink_noflags = $(SHELL) -ec '[ -d $(dir $(1)) ] || mkdir -p $(dir $(1))';		\
+	 	  $(LD) $(LDFLAGS_$(basename $(notdir $(1))))	\
+			-out:$(strip $(1)) $(2)
+
+liblink = $(SHELL) -ec '[ -d $(dir $(1)) ] || mkdir -p $(dir $(1))';	\
+	  $(LD) $(LLDFLAGS) $(LDFLAGS_$(basename $(notdir $(1))))	\
+                -out:$(strip $(1)) $(2)
+
+stliblink = $(SHELL) -ec '[ -d $(dir $(1)) ] || mkdir -p $(dir $(1))';	\
+	  $(LD) $(LLDFLAGS) $(LDFLAGS_$(basename $(notdir $(1))))	\
+                -out:$(strip $(1)) $(2)
+
+soliblink = $(SHELL) -ec '[ -d $(dir $(1)) ] || mkdir -p $(dir $(1))';	\
+	    $(LD) $(DLLLDFLAGS) $(LDFLAGS_$(basename $(notdir $(1))))   \
+		-out:$(strip $(1)) $(2)
+
+# Staticly linked dll
+stsoliblink = $(SHELL) -ec '[ -d $(dir $(1)) ] || mkdir -p $(dir $(1))';	\
+	      $(LD) $(STDLLLDFLAGS) $(LDFLAGS_$(basename $(notdir $(1))))   \
+		-out:$(strip $(1)) $(2)

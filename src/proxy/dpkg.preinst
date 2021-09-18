@@ -1,0 +1,7 @@
+#!/bin/bash -e
+
+# Install the Proxy user.
+if ! id proxy &> /dev/null; then
+    echo "Will create \"proxy\" user and group"
+    adduser --system --home /var/proxy --no-create-home --disabled-password --gecos "Proxy System Account" --group proxy > /dev/null
+fi

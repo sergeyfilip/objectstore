@@ -1,0 +1,69 @@
+// -*-c++-*-
+//
+//! \file common/time.hcc
+//
+//! Trivial operators that we really want to have inlined
+//
+// $Id: time.hcc,v 1.2 2013/04/26 17:58:42 joe Exp $
+//
+
+#ifndef COMMON_TIME_HCC
+# define COMMON_TIME_HCC
+
+inline Time::Time(int64_t sec, int64_t nsec)
+  : tim(sec,nsec)
+{
+}
+
+inline Time::Time(time_t t)
+  : tim(t, 0)
+{
+}
+
+inline Time::Time()
+  : tim(0,0)
+{
+}
+
+inline DiffTime::DiffTime()
+  : tim(0,0)
+{
+}
+
+inline Time& Time::operator-=(const DiffTime& p2 )
+{
+  return *this += (-p2);
+}
+
+inline bool Time::operator<(const Time& p2) const
+{
+  return tim.sec < p2.tim.sec
+    || (tim.sec == p2.tim.sec && tim.nsec < p2.tim.nsec);
+}
+
+inline bool Time::operator>(const Time& p2) const
+{
+  return p2 < *this;
+}
+
+inline bool Time::operator<=(const Time& p2) const
+{
+  return !(p2 < *this);
+}
+
+inline bool Time::operator>=(const Time& p2) const
+{
+  return !(*this < p2);
+}
+
+inline bool Time::operator==(const Time& p2) const
+{
+  return tim.sec == p2.tim.sec && tim.nsec == p2.tim.nsec;
+}
+
+inline bool Time::operator!=(const Time& p2) const
+{
+  return !(*this == p2);
+}
+
+#endif

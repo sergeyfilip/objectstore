@@ -1,0 +1,619 @@
+// -*-C++-*-
+//
+// Implementations of template members
+//
+// $Id: xmlio.hcc,v 1.9 2013/10/01 11:55:12 joe Exp $
+//
+
+#ifndef XML_XMLIO_HCC
+#define XML_XMLIO_HCC
+
+# ifndef XML_XMLIO_HH
+#  error Just include xmlio.hh - it will include .hcc automatically
+# endif
+
+# include "common/error.hh"
+# include "common/time.hh"
+# include "common/string.hh"
+# include <sstream>
+
+namespace xml {
+
+  template <class TElement>
+  void Document<TElement>::process(XMLexer& in) const
+  {
+    // Parse prolog
+    // - an optional XMLDecl
+    processXMLDecl(in);
+    // Parse element
+    if (!element.process(in))
+      throw error("Unable to parse XML document element:\n"
+                  + in.getCurrentContext()
+                  + "\n\nSchema is:\n" + schemaRNC() + "\n");
+    // Parse misc
+    //  processMisc(in);
+    // Ensure end-of-input
+    if (!in.endOfStream())
+      throw error("Unexpected trailing data after XML document: "
+                  + in.getCurrentContext());
+  }
+
+
+  template <class TElement>
+  void Document<TElement>::processXMLDecl(XMLexer& in) const
+  {
+    XMLexer::Backup inb(in);
+    // Can we read '<?xml' ?
+    if (!in.matchRaw("<?xml")) {
+      return;
+    }
+
+    // Can we read a VersionInfo?
+    XMLexer::Backup bVI(in);
+    if (SymSpace().process(in)
+        && in.match("version")
+        && (SymSpace().process(in) || true)
+        && in.matchRaw("=")
+        && (SymSpace().process(in) || true)
+        && (in.match("'1.0'") || in.match("\"1.0\""))) {
+      // Yes, correct!
+    } else {
+      // No, restore state... A missing VersionInfo is ok.
+      bVI.restore();
+    }
+
+    // Can we read an encoding?
+    XMLexer::Backup bE(in);
+    if (SymSpace().process(in)
+        && in.match("encoding")
+        && (SymSpace().process(in) || true)
+        && in.matchRaw("=")
+        && (SymSpace().process(in) || true)
+        && (in.match("'utf-8'") || in.match("\"utf-8\"")
+            || in.match("'UTF-8'") || in.match("\"UTF-8\""))) {
+      // Yes, correct!
+    } else {
+      // No, restore state... A missing encoding is ok.
+      bE.restore();
+    }
+
+    // XXX We do not parse SDDecl
+
+    // Now see if we can match the end of the XMLDecl
+    if ((SymSpace().process(in) || true)
+        && in.matchRaw("?>")) {
+      // Matched!
+      return;
+    } else {
+      throw error("Unable to match end of XMLDecl: "
+                  + in.getCurrentContext());
+    }
+  }
+
+
+  template<class TElement>
+  std::string Document<TElement>::schemaRNC() const
+  {
+    return "# RNC Schema for XML input/output\n"
+      + element.schemaRNC(0) + "\n"
+      "# End of RNC Schema for XML input/output\n";
+  }
+
+  template <class Destination>
+  bool CharData<Destination>::process(XMLexer& in) const {
+    // We must parse CDATA sections too.
+    bool in_cdata = false;
+    // Parse all character data...
+    std::string temp;
+    while (!in.endOfStream()) {
+      if (in_cdata) {
+        // In CDATA: Read RAW until we meet "]]>"
+
+        if (in.matchRaw("]]>")) {
+          in_cdata = false;
+          continue;
+        }
+        // Fine, then just add the data we read - but add it raw
+        temp.push_back(in.getRaw());
+        continue;
+      } else {
+        // Normal text: Read until a CDATA section starts or until we
+        // meet a '<'
+
+        if (in.matchRaw("<![CDATA[")) {
+          in_cdata = true;
+          continue;
+        }
+
+        XMLexer::Backup iback(in);
+        if (in.matchRaw("<")) {
+          // No, not a CDATA start. The '<' must mark the start of an
+          // element then.
+          iback.restore();
+          dest = string2Any<Destination>(temp);
+          return true;
+        }
+
+        // Regular character.
+        temp.push_back(in.get());
+      }
+    }
+    // End of stream.
+    dest = string2Any<Destination>(temp);
+    return true;
+  }
+
+
+  template <>
+  inline void CharData<std::string>::output(XMLWriter& out) const
+  {
+    out.writeCharData(dest);
+  }
+
+  template <class Destination>
+  void CharData<Destination>::output(XMLWriter& out) const
+  {
+    std::ostringstream s;
+    s << dest;
+    out.writeCharData(s.str());
+  }
+
+
+  template <class Destination>
+  std::string CharData<Destination>::schemaRNC(unsigned indent) const
+  {
+    return "data";
+  }
+
+  template <class Destination>
+  bool CharData<Destination>::seqTrymatch(XMLexer& in) const
+  {
+    // If we didn't match before, re-try matching
+    if (!seqmatch) {
+      seqmatch = process(in);
+      // Return progress if we matched
+      return seqmatch;
+    }
+    return false;
+  }
+
+
+  template <class Destination>
+  bool CharData<Destination>::seqGetmatch() const
+  {
+    return seqmatch;
+  }
+
+
+  template <class Destination>
+  void CharData<Destination>::seqClearmatch() const
+  {
+    seqmatch = false;
+  }
+
+
+  template <class TElement>
+  void Document<TElement>::output(XMLWriter& out) const
+  {
+    // Output prolog:
+    //  XMLDecl
+    out.writeVerbatim("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n");
+    // Output element
+    element.output(out);
+    // Output end-of-output comment
+    out.writeVerbatim("<!-- End of Document -->\n");
+  }
+
+
+  template <class EType>
+  bool EOptional<EType>::process(XMLexer& in) const
+  {
+    // We match whether or not the actual element is matched - that's
+    // what it means to be an optional If we match the element we
+    // return a "proper" match
+    m_element.process(in);
+    return true;
+  }
+
+
+  template <class EType>
+  void EOptional<EType>::output(XMLWriter& out) const
+  {
+    std::ostringstream elm;
+    // Attempt outputting the element and silently ignore failure
+    try {
+      XMLWriter tmp(elm);
+      m_element.output(tmp);
+    } catch (...) {
+      return;
+    }
+    // Output succeeded - so output to real output
+    out.writeVerbatim(elm.str());
+  }
+
+
+  template <class EType>
+  std::string EOptional<EType>::schemaRNC(unsigned indent) const
+  {
+    return m_element.schemaRNC(indent) + "?";
+  }
+
+
+  template <class EType>
+  bool EOptional<EType>::seqTrymatch(XMLexer& in) const
+  {
+    // Only if we did not previously match, re-try matching the
+    // element (but do not use our own process because it will always
+    // claim a match)
+    if (!seqmatch) {
+      seqmatch = m_element.process(in);
+      // Return progress if we matched now
+      return seqmatch;
+    }
+    return false;
+  }
+
+  template <class EType>
+  bool EOptional<EType>::seqGetmatch() const
+  {
+    // We will always claim that we matched - we're an optional after all
+    return true;
+  }
+
+  template <class EType>
+  void EOptional<EType>::seqClearmatch() const
+  {
+    seqmatch = false;
+  }
+
+
+  template <class A, class B>
+  bool EOption<A,B>::process(XMLexer& in) const
+  {
+    // We parse if A or B parse
+    return m_a.process(in) || m_b.process(in);
+  }
+
+  template <class A, class B>
+  void EOption<A,B>::output(XMLWriter& out) const
+  {
+    // We only output the first option. This is not correct and a
+    // proper solution will be needed when womeone needs to use this
+    // for real.
+    m_a.output(out);
+  }
+
+  template <class A, class B>
+  std::string EOption<A,B>::schemaRNC(unsigned indent) const
+  {
+    return m_a.schemaRNC(indent) + "| \n"
+      + std::string(indent, ' ')
+      + m_b.schemaRNC(indent);
+  }
+
+  template <class A, class B>
+  bool EOption<A,B>::seqTrymatch(XMLexer& in) const
+  {
+    return m_a.seqTrymatch(in) || m_b.seqTrymatch(in);
+  }
+
+  template <class A, class B>
+  bool EOption<A,B>::seqGetmatch() const
+  {
+    return m_a.seqGetmatch() || m_b.seqGetMatch();
+  }
+
+  template <class A, class B>
+  void EOption<A,B>::seqClearmatch() const
+  {
+    m_a.seqClearmatch();
+    m_b.seqClearmatch();
+  }
+
+  template <class A, class B>
+  bool EOrderedSequence<A,B>::process(XMLexer& in) const
+  {
+    // We parse if A and B parse in order
+    XMLexer::Backup iback(in);
+    const bool ma = a.process(in);
+    const bool mb = b.process(in);
+    // We match only if both matched
+    if (ma && mb)
+      return true;
+    // One or both failed... restore state
+    iback.restore();
+    return false;
+  }
+
+
+  template <class A, class B>
+  void EOrderedSequence<A,B>::output(XMLWriter& out) const
+  {
+    // Output A and B in order...
+    a.output(out);
+    b.output(out);
+  }
+
+
+  template <class A, class B>
+  std::string EOrderedSequence<A,B>::schemaRNC(unsigned indent) const
+  {
+    return a.schemaRNC(indent) + ", \n"
+      + std::string(indent, ' ')
+      + b.schemaRNC(indent);
+  }
+
+
+  template <class A, class B>
+  bool EOrderedSequence<A,B>::seqTrymatch(XMLexer& in) const
+  {
+    // If we didn't match before, re-try matching
+    if (!seqmatch) {
+      seqmatch = process(in);
+      // Report progress on success
+      return seqmatch;
+    }
+    // No progress
+    return false;
+  }
+
+  template <class A, class B>
+  bool EOrderedSequence<A,B>::seqGetmatch() const
+  {
+    return seqmatch;
+  }
+
+  template <class A, class B>
+  void EOrderedSequence<A,B>::seqClearmatch() const
+  {
+    seqmatch = false;
+  }
+
+
+  template <class A, class B>
+  bool EUnorderedSequence<A,B>::process(XMLexer& in) const
+  {
+    seqClearmatch();
+    XMLexer::Backup iback(in);
+    // While progress is being made, try matching on input...
+    while (seqTrymatch(in));
+    // Now see if all matched...
+    if (!seqGetmatch()) {
+      // Failed. Restore initial state then.
+      iback.restore();
+      return false;
+    }
+    return true;
+  }
+
+
+  template <class A, class B>
+  bool EUnorderedSequence<A,B>::seqTrymatch(XMLexer& in) const
+  {
+    // See if a or b can make progress
+    return a.seqTrymatch(in) || b.seqTrymatch(in);
+  }
+
+  template <class A, class B>
+  bool EUnorderedSequence<A,B>::seqGetmatch() const
+  {
+    // We matched if both our elements did
+    return a.seqGetmatch() && b.seqGetmatch();
+  }
+
+
+  template <class A, class B>
+  void EUnorderedSequence<A,B>::seqClearmatch() const
+  {
+    a.seqClearmatch();
+    b.seqClearmatch();
+  }
+
+
+  template <class A, class B>
+  void EUnorderedSequence<A,B>::output(XMLWriter& out) const
+  {
+    // Output A and B in order...
+    a.output(out);
+    b.output(out);
+  }
+
+  template <class A, class B>
+  std::string EUnorderedSequence<A,B>::schemaRNC(unsigned indent) const
+  {
+    return a.schemaRNC(indent) + "& \n"
+      + std::string(indent, ' ')
+      + b.schemaRNC(indent);
+  }
+
+  template <class E, class S>
+  bool EGroup<E,S>::process(XMLexer& in) const
+  {
+    XMLexer::Backup iback(in);
+    // Process start-tag, sub-group and end-tag
+    if (element.processSTag(in)
+        && sub.process(in)
+        && element.processETag(in)) {
+      return true;
+    }
+    // Restore and report failure
+    iback.restore();
+    return false;
+  }
+
+
+  template <class E, class S>
+  void EGroup<E,S>::output(XMLWriter& out) const
+  {
+    // We have a group:
+    //  <top>
+    //   <sub>subc</sub>
+    //   <tub>tubc</tub>
+    //  </top>
+    //
+    element.outputSTag(out);
+    sub.output(out);
+    element.outputETag(out);
+  }
+
+
+  template <class E, class S>
+  std::string EGroup<E,S>::schemaRNC(unsigned indent) const
+  {
+    return element.schemaRNC(indent) + " { \n"
+      + std::string(indent + 2, ' ')
+      + sub.schemaRNC(indent + 2) + "\n"
+      + std::string(indent, ' ') + "}";
+  }
+
+
+  template <class E, class S>
+  bool EGroup<E,S>::seqTrymatch(XMLexer& in) const
+  {
+    // If we didn't match before, re-try matching
+    if (!seqmatch) {
+      seqmatch = process(in);
+      // Report progress on success
+      return seqmatch;
+    }
+    // No progress
+    return false;
+  }
+
+
+  template <class E, class S>
+  bool EGroup<E,S>::seqGetmatch() const
+  {
+    return seqmatch;
+  }
+
+
+  template <class E, class S>
+  void EGroup<E,S>::seqClearmatch() const
+  {
+    seqmatch = false;
+  }
+
+  template <class EType>
+  bool ERepeated<EType>::process(XMLexer& in) const
+  {
+    // Parse the element as many times as we can.
+    while (element.process(in));
+    // Success! We did it zero or more times :)
+    return true;
+  }
+
+
+  template <class EType>
+  std::string ERepeated<EType>::schemaRNC(unsigned indent) const
+  {
+    return element.schemaRNC(indent) + "*";
+  }
+
+
+  template <class EType>
+  bool ERepeated<EType>::seqTrymatch(XMLexer& in) const
+  {
+    // Only if we did not previously match at least one element,
+    // re-try matching the element (but do not use our own process
+    // because it will always claim a match)
+    if (!seqmatch) {
+      while (element.process(in))
+        seqmatch = true;
+      // Return progress if we matched now
+      return seqmatch;
+    }
+    return false;
+  }
+
+
+  template <class EType>
+  bool ERepeated<EType>::seqGetmatch() const
+  {
+    // We always claim we matched because we will always have matched
+    // at least zero occurrences :)
+    return true;
+  }
+
+
+  template <class EType>
+  void ERepeated<EType>::seqClearmatch() const
+  {
+    seqmatch = false;
+  }
+
+
+  template <class EType>
+  void ERepeated<EType>::output(XMLWriter& out) const
+  {
+    // As long as output works, run it
+    while (element.output(out));
+  }
+
+
+  template <class E, class Binder>
+  std::string EAction<E,Binder>::schemaRNC(unsigned indent) const
+  {
+    return element.schemaRNC(indent);
+  }
+
+
+  template <class E, class Binder>
+  bool EAction<E,Binder>::process(XMLexer& in) const
+  {
+    // On successful element processing, execute the bound action.
+    XMLexer::Backup iback(in);
+    if (element.process(in)) {
+      // If the action fails, fail the processing too
+      if (!binder()) {
+        iback.restore();
+        return false;
+      }
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  template <class E, class Binder>
+  bool EAction<E,Binder>::output(XMLWriter& out) const
+  {
+    // Call the generator action, then output the element
+    if (binder()) {
+      element.output(out);
+      return true;
+    }
+    return false;
+  }
+
+
+  template <class E, class Binder>
+  bool EAction<E,Binder>::seqTrymatch(XMLexer& in) const
+  {
+    return element.seqTrymatch(in);
+  }
+
+  template <class E, class Binder>
+  bool EAction<E,Binder>::seqGetmatch() const
+  {
+    return element.seqGetmatch();
+  }
+
+  template <class E, class Binder>
+  void EAction<E,Binder>::seqClearmatch() const
+  {
+    element.seqClearmatch();
+  }
+
+  template <class E>
+  bool sequencer<E>::add()
+  {
+    m_list.push_back(m_tmp);
+    m_tmp = E();
+    return true;
+  }
+
+}
+
+
+#endif

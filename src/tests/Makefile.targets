@@ -1,0 +1,16 @@
+# -*-Makefile-*-
+#
+# Makefile for components tests
+#
+
+BUILD_TARGETS += $(TARGET_PATH)/tests/dir_monitor_test$(EEXT)
+
+src-tests-dir_monitor_test-sources := dir_monitor_test
+src-tests-dir_monitor_test-libs := common xml backup client sqlite
+all-sources += $(foreach f, $(src-tests-dir_monitor_test-sources), dir_monitor_test/$(f))
+
+$(TARGET_PATH)/tests/dir_monitor_test$(EEXT): \
+ $(foreach l, $(src-tests-dir_monitor_test-libs), $(TARGET_PATH)/$(l)/lib$(l)$(LOEXT)) \
+ $(foreach f, $(src-tests-dir_monitor_test-sources), $(TARGET_PATH)/tests/$(f)$(OEXT)) \
+ $(TARGET_PATH)/version$(OEXT)
+	$(call cxxlink, $@, $^)

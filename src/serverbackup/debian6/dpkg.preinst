@@ -1,0 +1,17 @@
+#!/bin/bash -e
+
+if [[ $(sysctl -n fs.inotify.max_user_watches) -lt 1000000 ]]; then
+   cat <<EOF >> /etc/sysctl.conf
+#
+# Keepit serverbackup agent requires a watch for every directory
+# on your system in order to run CDP. This limit was automatically
+# added during installation of the serverbackup package.
+#
+# If you do not wish to have this high limit, you will probably
+# need to run your serverbackup agent without CDP enabled.
+#
+fs.inotify.max_user_watches=1000000
+EOF
+   sysctl -w fs.inotify.max_user_watches=1000000
+fi
+

@@ -1,0 +1,15 @@
+# -*-Makefile-*-
+#
+# Target definitions for sql library
+#
+# $Id: Makefile.targets,v 1.1 2013/01/15 10:14:36 joe Exp $
+#
+
+BUILD_TARGETS += $(TARGET_PATH)/sql/libsql$(LOEXT)
+
+src-sql-sources := pgsql
+all-sources += $(foreach f, $(src-sql-sources), sql/$(f))
+$(TARGET_PATH)/sql/libsql$(LOEXT): \
+ $(foreach f, $(src-sql-sources), $(TARGET_PATH)/sql/$(f)$(OEXT))
+	$(call liblink, $@, $^)
+

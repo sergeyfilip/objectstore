@@ -1,0 +1,42 @@
+#include <winver.h>
+
+IDI_ICON1               ICON    DISCARDABLE     "src\\winbackup\\KeepIt.ico"
+
+VS_VERSION_INFO VERSIONINFO
+
+FILEVERSION    	@MAJORVERSION@,@MINORVERSION@,@RELEASE@,@BUILDNO@
+PRODUCTVERSION    	@MAJORVERSION@,@MINORVERSION@,@RELEASE@,@BUILDNO@
+
+
+FILEFLAGSMASK  	VS_FFI_FILEFLAGSMASK
+FILEOS         	VOS__WINDOWS32
+FILETYPE       	VFT_DLL
+FILESUBTYPE    	VFT2_UNKNOWN
+
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904E4"
+        BEGIN
+            VALUE "CompanyName",      "Keepit A/S\0"
+            VALUE "FileDescription",  "Keepit PC Connector\0"
+            VALUE "FileVersion",      "@VERSION@-@BUILDNO@\0"
+            VALUE "LegalCopyright",   "Copyright 2013 Keepit A/S\0"
+            VALUE "ProductName",      "Keepit PC Connector\0"
+            VALUE "ProductVersion",   "@VERSION@-@BUILDNO@\0"
+        END
+    END
+
+    BLOCK "VarFileInfo"
+    BEGIN
+        /* The following line should only be modified for localized versions.     */
+        /* It consists of any number of WORD,WORD pairs, with each pair           */
+        /* describing a language,codepage combination supported by the file.      */
+        /*                                                                        */
+        /* For example, a file might have values "0x409,1252" indicating that it  */
+        /* supports English language (0x409) in the Windows ANSI codepage (1252). */
+
+        VALUE "Translation", 0x409, 1252
+
+    END
+END

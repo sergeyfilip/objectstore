@@ -1,0 +1,15 @@
+# -*-Makefile-*-
+#
+# Target definitions for the XML library
+#
+# $Id: Makefile.targets,v 1.2 2013/01/20 12:42:04 joe Exp $
+#
+
+BUILD_TARGETS += $(TARGET_PATH)/xml/libxml$(LOEXT)
+
+src-xml-sources := xmlexer xmlio xmlwriter
+all-sources += $(foreach f, $(src-xml-sources), xml/$(f))
+$(TARGET_PATH)/xml/libxml$(LOEXT): \
+ $(foreach f, $(src-xml-sources), $(TARGET_PATH)/xml/$(f)$(OEXT))
+	$(call liblink, $@, $^)
+

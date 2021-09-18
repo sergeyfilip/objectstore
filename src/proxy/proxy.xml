@@ -1,0 +1,91 @@
+<!-- Proxy configuration file -->
+<proxy>
+  <!-- Port to bind to -->
+  <bindPort>8080</bindPort>
+  <!-- Number of request processing worker threads -->
+  <workerThreads>5</workerThreads>
+  <!-- Object Storage API server for object access -->
+  <osapi>
+    <host>localhost</host>
+    <port>8081</port>
+  </osapi>
+  <osapi>
+    <host>localhost</host>
+    <port>8082</port>
+  </osapi>
+  <!-- Postgres connection string to our user database -->
+  <connString>dbname=keepitng</connString>
+  <!-- This is the realm we send to the client when responding 401 -->
+  <authRealm>ng.keepit.com</authRealm>
+  <!-- Static file serving - root and index -->
+  <documentRoot>/tmp</documentRoot>
+  <documentIndex>nofile</documentIndex>
+  <!-- Special 404 error page for expired shares -->
+  <docShare404>/share/404.html</docShare404>
+  <!-- SSL certificate and key -->
+  <!-- Remove these two to disable SSL -->
+  <sslCert>src/proxy/wkc.pem</sslCert>
+  <sslKey>src/proxy/wkc.key</sslKey>
+  <!-- Credentials cache for authentication. -->
+  <!-- This is the time-to-live for entries in the cache. -->
+  <cacheTTL>PT5M</cacheTTL>
+  <!-- Default mime type if we cannot match extension -->
+  <mimedefault>application/octet-stream</mimedefault>
+  <!-- Mime types for files we serve -->
+  <mime>
+    <ext>.html</ext>
+    <type>text/html</type>
+  </mime>
+  <mime>
+    <ext>.txt</ext>
+    <type>text/plain</type>
+  </mime>
+  <mime>
+    <ext>.xml</ext>
+    <type>application/xml</type>
+  </mime>
+  <mime>
+    <ext>.css</ext>
+    <type>text/css</type>
+  </mime>
+  <mime>
+    <ext>.json</ext>
+    <type>application/json</type>
+  </mime>
+  <mime>
+    <ext>.js</ext>
+    <type>application/ecmascript</type>
+  </mime>
+  <mime>
+    <ext>.jpg</ext>
+    <type>image/jpeg</type>
+  </mime>
+  <mime>
+    <ext>.gif</ext>
+    <type>image/gif</type>
+  </mime>
+  <mime>
+    <ext>.png</ext>
+    <type>image/png</type>
+  </mime>
+  <mime>
+    <ext>.msi</ext>
+    <type>application/x-msi</type>
+  </mime>
+  <mime>
+    <ext>.deb</ext>
+    <type>application/x-debian-package</type>
+  </mime>
+  <mime>
+    <ext>.dmg</ext>
+    <type>application/x-apple-diskimage</type>
+  </mime>
+  <mime>
+    <ext>.rpm</ext>
+    <type>application/x-redhat-package-manager</type>
+  </mime>
+  <mime>
+    <ext>.pdf</ext>
+    <type>application/pdf</type>
+  </mime>
+</proxy>

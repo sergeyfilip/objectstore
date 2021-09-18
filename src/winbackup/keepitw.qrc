@@ -1,0 +1,21 @@
+<RCC>
+  <qresource prefix="/">
+    <file>KeepitLogo.png</file>
+    <file>logo140.bmp</file>
+    <file>biglogo1.png</file>
+    <file>logo100.bmp</file>
+    <file>biglogo.png</file>
+    <file>keepitwork00.png</file>
+    <file>keepitwork01.png</file>
+    <file>keepitwork02.png</file>
+    <file>keepitwork03.png</file>
+    <file>keepitwork04.png</file>
+    <file>keepitwork05.png</file>
+    <file>keepitwork06.png</file>
+    <file>keepitwork07.png</file>
+    <file>background.png</file>
+    <file>trayicon_warn.png</file>
+    <file>trayicon_ok.png</file>
+    <file>trayicon_blank.png</file>
+  </qresource>
+</RCC>

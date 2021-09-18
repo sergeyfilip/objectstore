@@ -1,0 +1,64 @@
+<?xml version="1.0"?>
+<!DOCTYPE service_bundle SYSTEM "/usr/share/lib/xml/dtd/service_bundle.dtd.1">
+<!--
+    $Id: manifest.xml,v 1.3 2013/01/31 10:17:14 joe Exp $
+
+    (C) 2013 - Evalesco A/S.
+
+    Service manifest for OS/API daemon
+-->
+
+<service_bundle type='manifest' name='KeepitNG:objstore'>
+
+<service
+	name='system/objstore'
+	type='service'
+	version='1'>
+
+	<create_default_instance enabled='false' />
+
+	<single_instance />
+
+	<dependency
+	    name='multi-user'
+	    grouping='require_all'
+	    restart_on='none'
+	    type='service'>
+	    <service_fmri value='svc:/milestone/multi-user' />
+	</dependency>
+
+        <method_context>
+          <method_credential group='stord' user='stord'/>
+          <method_environment>
+            <envvar name="PATH" value="/opt/EVALobjstore/sbin"/>
+          </method_environment>
+        </method_context>
+
+	<exec_method
+	    type='method'
+	    name='start'
+	    exec='/opt/EVALobjstore/sbin/stord /etc/objstore/stord.xml'
+	    timeout_seconds='30' />
+
+	<exec_method
+	    type='method'
+	    name='stop'
+	    exec=':kill -INT'
+	    timeout_seconds='90' />
+
+        <property_group name='startd' type='framework'>
+          <propval name='duration' type='astring' value='child' />
+        </property_group>
+
+	<stability value='Stable' />
+
+	<template>
+	    	<common_name>
+		    	<loctext xml:lang='C'>
+				Object Storage Daemon
+			</loctext>
+		</common_name>
+	</template>
+</service>
+
+</service_bundle>

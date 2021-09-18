@@ -1,0 +1,33 @@
+# -*- Makefile -*-
+#
+# $Id: Makefile.tools.qt,v 1.2 2013/07/15 07:56:42 sf Exp $
+#
+# Setup QT specific compilers and targets
+#
+
+UIC := uic
+MOC := moc
+RCC := rcc
+LRELEASE := lrelease
+
+PATH := $(PATH):$(QTBINDIR)
+
+QT_INCLUDES ?= QtCore QtGui QtCore QtNetwork
+QT_CXXFLAGS ?= $(foreach i,$(QT_INCLUDES),-I$(QTINCDIR)/$(i))
+QT_CXXFLAGS += -I$(QTINCDIR)
+CXXFLAGS += $(QT_CXXFLAGS)
+
+# Generate QT implementation classes with the moc tool
+$(TARGET_PATH)/%.moc.cc: src/%.hh
+	@$(SHELL) -ec '[ -d $(dir $@) ] || mkdir -p $(dir $@)'
+	$(QTBINDIR)/$(MOC) $< -o $@
+
+# Generate a c++ source from a QT resource file
+$(TARGET_PATH)/%.res.cc: src/%.qrc
+	@$(SHELL) -ec '[ -d $(dir $@) ] || mkdir -p $(dir $@)'
+	$(QTBINDIR)/$(RCC) -o $@ -name $(basename $(notdir $<)) $<
+
+#$(TARGET_PATH)/%.res: src/%.rc
+#	@$(SHELL) -ec '[ -d $(dir $@) ] || mkdir -p $(dir $@)'
+#	$(RC) -o $@ -name $(basename $(notdir $<)) $<
+

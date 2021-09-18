@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle"  xmlns:dc="http://purl.org/dc/elements/1.1/">
+   <channel>
+      <title>Keepit</title>
+      <link>https://@@BASEURL@@/files/download/updates/desktop/mac/keepitmac.xml</link>
+      <description>Most recent changes with links to updates.</description>
+      <language>en</language>      
+         <item>
+            <title>Version @@VERSION@@</title>
+						<sparkle:releaseNotesLink>
+							https://@@BASEURL@@/files/download/updates/desktop/mac/@@BUILDNO@@/releasenotes.html
+						</sparkle:releaseNotesLink>
+            <pubDate>@@PUBDATE@@</pubDate>
+            <enclosure url="https://@@BASEURL@@/files/download/updates/desktop/mac/@@BUILDNO@@/Keepit.app-@@VERSION@@-@@BUILDNO@@.tar.gz"
+                sparkle:version="@@BUILDNO@@"
+                sparkle:shortVersionString="@@VERSION@@"
+                type="application/octet-stream" />
+         </item>
+	</channel>
+</rss>

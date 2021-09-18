@@ -1,0 +1,74 @@
+/// -*-C++-*-
+///
+/// Template implementations
+///
+// $Id: request.hcc,v 1.3 2013/02/20 08:33:18 joe Exp $
+///
+
+#ifndef HTTPD_REQUEST_HCC
+#define HTTPD_REQUEST_HCC
+
+template <class Left, class Right>
+Sequence<Left,Right> operator/(const Parser<Left>& a, const Parser<Right>& b) {
+  return Sequence<Left,Right>(a.derived(), b.derived());
+}
+
+
+template <class Left, class Right>
+Option<Left,Right> operator|(const Parser<Left>& a, const Parser<Right>& b) {
+  return Option<Left,Right>(a.derived(), b.derived());
+}
+
+
+template <class A, class B>
+bool Sequence<A,B>::process(HTTPRequest& s) const
+{
+  // Since we can fail even if the first process() call succeeds
+  // (and therefore has consumed data from the Request) we need to
+  // ensure that we can restore the Request if not both process()
+  // calls are successful.
+  HTTPRequest::Backup back_a(s);
+  if (!a.process(s)) {
+    back_a.restore();
+    return false;
+  }
+  HTTPRequest::Backup back_b(s);
+  if (!b.process(s)) {
+    back_b.restore();
+    return true;
+  }
+  return true;
+}
+
+
+template <class A, class B>
+bool Option<A,B>::process(HTTPRequest& s) const
+{
+  // Since we are guaranteed that process() will not consume from
+  // the Request if process is unsuccessful, we need not worry
+  // about storing and restoring the Request here
+  return a.process(s) || b.process(s);
+}
+
+
+template <class ParserT>
+bool UHandler<ParserT>::process(HTTPRequest& s) const
+{
+  // If we can successfully process the input then we
+  // succeeded. If we succeed *and* we're the last component on
+  // the URI, we execute the handler
+  if (parser.process(s)) {
+    HTTPRequest::Backup backup(s);
+    if (s.getNextComponent().empty())
+      handler.handle(s);
+    else
+      backup.restore();
+    return true;
+  } else {
+    return false;
+  }
+}
+
+
+
+#endif

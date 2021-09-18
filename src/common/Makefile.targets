@@ -1,0 +1,15 @@
+# -*-Makefile-*-
+#
+# Target definitions for common files
+#
+# $Id: Makefile.targets,v 1.7 2013/08/29 09:24:31 vg Exp $
+#
+
+BUILD_TARGETS += $(TARGET_PATH)/common/libcommon$(LOEXT)
+
+src-common-sources := error mutex thread crc32 trace time hash base64	\
+                      string semaphore ssl JSONParser JSONValue
+all-sources += $(foreach f, $(src-common-sources), common/$(f))
+$(TARGET_PATH)/common/libcommon$(LOEXT): \
+ $(foreach f, $(src-common-sources), $(TARGET_PATH)/common/$(f)$(OEXT))
+	$(call liblink, $@, $^)

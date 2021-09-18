@@ -1,0 +1,66 @@
+# -*-Makefile-*-
+#
+# Makefile for the proxy server
+#
+
+BUILD_TARGETS += $(TARGET_PATH)/proxy/proxy$(EEXT)
+
+src-proxy-proxy-sources := main credcache downloads mirror
+src-proxy-proxy-libs := common httpd xml sql objparser client
+all-sources += $(foreach f, $(src-proxy-proxy-sources), proxy/$(f))
+
+$(TARGET_PATH)/proxy/proxy$(EEXT): \
+ $(foreach l, $(src-proxy-proxy-libs), $(TARGET_PATH)/$(l)/lib$(l)$(LOEXT)) \
+ $(foreach f, $(src-proxy-proxy-sources), $(TARGET_PATH)/proxy/$(f)$(OEXT)) \
+ $(TARGET_PATH)/version$(OEXT)
+	$(call cxxlink, $@, $^)
+
+
+.PHONY: package-proxy-deb
+package-proxy-deb: $(TARGET_PATH)/proxy-$(VERSION)-$(BUILDNO).deb
+
+$(TARGET_PATH)/proxy-$(VERSION)-$(BUILDNO).deb:			\
+	$(TARGET_PATH)/proxy/proxy$(EEXT) src/proxy/proxy.xml	\
+	src/proxy/dpkg.control.in src/proxy/proxy.initscript 	\
+	src/proxy/dpkg.preinst
+#	Make sure we have a clean working directory
+	test -d $(TARGET_PATH)/proxy-dpkg 			\
+		&& rm -rf $(TARGET_PATH)/proxy-dpkg || true
+	mkdir -p $(TARGET_PATH)/proxy-dpkg/DEBIAN
+#	Set up file hierarchy
+#	(config file)
+	mkdir -p $(TARGET_PATH)/proxy-dpkg/etc/proxy
+	cp src/proxy/proxy.xml					\
+           $(TARGET_PATH)/proxy-dpkg/etc/proxy/proxy.xml
+#	(executable)
+	mkdir -p $(TARGET_PATH)/proxy-dpkg/usr/sbin
+	cp $(TARGET_PATH)/proxy/proxy$(EEXT)			\
+           $(TARGET_PATH)/proxy-dpkg/usr/sbin/proxy$(EEXT)
+#	(init script)
+	mkdir -p $(TARGET_PATH)/proxy-dpkg/etc/init.d
+	cp src/proxy/proxy.initscript				\
+           $(TARGET_PATH)/proxy-dpkg/etc/init.d/proxy
+#	MD5 sums
+	find $(TARGET_PATH)/proxy-dpkg -type f -print0 		\
+             | xargs -0 md5sum 					\
+             > $(TARGET_PATH)/proxy-dpkg/DEBIAN/md5sums
+#	Control file
+	sed -e "s/#VERSION#/$(VERSION)-$(BUILDNO)/" 		\
+		< src/proxy/dpkg.control.in 			\
+		> $(TARGET_PATH)/proxy-dpkg/DEBIAN/control
+#	Conf files
+	cp src/proxy/dpkg.conffiles $(TARGET_PATH)/proxy-dpkg/DEBIAN/conffiles
+	cp src/proxy/dpkg.preinst $(TARGET_PATH)/proxy-dpkg/DEBIAN/preinst
+	chmod 755 $(TARGET_PATH)/proxy-dpkg/DEBIAN/preinst
+#	In a fakeroot, set up permissions and actually build the package
+	fakeroot bash -c '\
+chown 0:0 -R $(TARGET_PATH)/proxy-dpkg/; \
+chmod 755 $(TARGET_PATH)/proxy-dpkg/etc/proxy; \
+chmod 644 $(TARGET_PATH)/proxy-dpkg/etc/proxy/proxy.xml; \
+chmod 755 $(TARGET_PATH)/proxy-dpkg/usr/sbin/proxy; \
+chmod 755 $(TARGET_PATH)/proxy-dpkg/etc/init.d/proxy; \
+dpkg-deb --build $(TARGET_PATH)/proxy-dpkg;'
+	mv -f $(TARGET_PATH)/proxy-dpkg.deb $@
+	rm -r $(TARGET_PATH)/proxy-dpkg
+
+

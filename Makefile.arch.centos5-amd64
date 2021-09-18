@@ -1,0 +1,36 @@
+# -*-Makefile-*-
+#
+# $Id: Makefile.arch.centos5-amd64,v 1.7 2015/04/26 18:54:49 joe Exp $
+#
+# CentOS 5 amd64 architecture
+#
+
+PLATFORMNAME = CentOS 5 (amd64)
+
+# Do optimize
+FLAG_OPTIMIZED := 1
+
+# Ship executables with full debug info
+DEBUG := 1
+
+# Use prevent
+# FLAG_USE_PREVENT := 1
+
+# Point us at the right compiler
+CXX = /usr/bin/g++
+CC = /usr/bin/gcc
+
+# Configure the GNU toolchain
+include Makefile.tools.gnu_ld
+include Makefile.tools.gnu_cc
+
+SSL_CAFILE := "/etc/pki/tls/certs/ca-bundle.crt"
+
+CXXFLAGS += -D_BSD_SOURCE -I/usr/include/postgresql -pthread
+CCFLAGS_sqlite3 += -fno-strict-aliasing
+
+LDFLAGS += -lcrypto -lssl
+
+MODULES := common xml serverbackup client backup objparser sqlite
+
+PACKIT_TARGETS += $(TARGET_PATH)/serverbackup-$(VERSION)-$(BUILDNO).rpm

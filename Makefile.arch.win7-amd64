@@ -1,0 +1,65 @@
+# -*-Makefile-*-
+#
+# $Id: Makefile.arch.win7-amd64,v 1.14 2013/10/08 07:55:03 vg Exp $
+#
+# Windows 7 64 bit
+#
+
+PLATFORMNAME = Windows 7 (amd64)
+
+# Platform-specific defines
+PLATFORMDEFINES = -D_WIN32_WINNT=0x0600 -DWIN32_LEAN_AND_MEAN \
+		  -DSO_WIN_AMD64 -DSO_64BIT_TIMET 
+		  
+
+# Use the unicode version of the Win32 functions
+PLATFORMDEFINES += -DUNICODE
+PLATFORMDEFINES += -Ic:\\openssl\\include
+
+
+
+#FLAG_DEVEL := 1
+
+MSIPLATFORM := x64
+
+ifdef VS2012
+MSDLLSRC := c:\\Program\ Files\ (x86)\\Microsoft\ Visual\ Studio\ 11.0\\VC\\redist\\x64\\Microsoft.VC110.CRT
+MSVCRDLL := msvcr110.dll
+MSVCPDLL := msvcp110.dll
+else
+MSDLLSRC := c:\\Program\ Files\ (x86)\\Microsoft\ Visual\ Studio\ 10.0\\VC\\redist\\x64\\Microsoft.VC100.CRT
+MSVCRDLL := msvcr100.dll
+MSVCPDLL := msvcp100.dll
+endif
+
+# Point us at the right compiler
+CC = cl.exe
+CXX = cl.exe
+AS = as
+LD = link.exe
+RC = rc.exe
+WINDOWSRC = RES
+# QT
+QTDIR := c:\\qt\\4.8.4
+QTBINDIR := $(QTDIR)\\bin
+QTLIBDIR := $(QTDIR)\\lib
+QTINCDIR := $(QTDIR)\\include
+
+include Makefile.tools.ms_ld
+include Makefile.tools.ms_cc
+include Makefile.tools.qt
+
+
+LDFLAGS += -libpath:c:\\openssl\\lib\\vc\\static libeay32MT.lib ssleay32MT.lib \
+           -libpath:$(QTLIBDIR)
+LDFLAGS_democli += -subsystem:console shell32.lib user32.lib gdi32.lib
+
+ifdef FLAG_DEVEL
+LDFLAGS_keepitw += -subsystem:windows shell32.lib user32.lib gdi32.lib \
+                   QtCored4.lib QtGuid4.lib QtMaind.lib
+else
+LDFLAGS_keepitw += -subsystem:windows shell32.lib user32.lib gdi32.lib \
+                   QtCore4.lib QtGui4.lib QtMain.lib
+endif
+
+MODULES := common sqlite democli xml client backup objparser winbackup tests

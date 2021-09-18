@@ -1,0 +1,8 @@
+Package: proxy
+Version: #VERSION#
+Section: unknown
+Priority: optional
+Architecture: amd64
+Depends: libc6, libstdc++6
+Maintainer: The Keepit Team <keepit@evalesco.com>
+Description: API Proxy server for Keepit NG

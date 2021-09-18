@@ -1,0 +1,70 @@
+//-*-C++-*-
+//
+//! \file common/trace.hcc
+//
+//! In-line implementations of central trace code
+//
+// $Id: trace.hcc,v 1.2 2013/05/06 13:48:08 joe Exp $
+
+inline trace::Path::Path(const std::string &name)
+  : m_name(name)
+{
+  // Chain us into the list; this works when all Path objects are
+  // global.
+  m_next = m_pchain;
+  m_pchain = this;
+}
+
+
+inline
+bool trace::Path::enabled(trace::level_t level) const
+{
+  MutexLock lock(m_conf_mutex);
+  switch (level) {
+  case Debug: return !m_debug_dests.empty();
+  case Info: return !m_info_dests.empty();
+  case Warn: return !m_warn_dests.empty();
+  }
+  return false;
+}
+
+inline
+void trace::Path::log(trace::level_t level,
+                      const std::string &s) const
+{
+  MutexLock lock(m_conf_mutex);
+  // Find out which destination list to traverse
+  const std::list<Destination*> *llist;
+  switch (level) {
+  case Debug: llist = &m_debug_dests; break;
+  case Info: llist = &m_info_dests; break;
+  case Warn: llist = &m_warn_dests; break;
+  default: llist = 0;
+  }
+
+  // Log to selected destination list
+  for (std::list<Destination*>::const_iterator i = llist->begin();
+       i != llist->end(); ++i)
+    (*i)->output(s);
+}
+
+inline trace::Path *trace::Path::getNext() const
+{
+  return m_next;
+}
+
+inline void trace::Path::addDestination(trace::level_t level,
+                                        trace::Destination *dest)
+{
+  MutexLock lock(m_conf_mutex);
+  switch (level) {
+  case Debug: m_debug_dests.push_back(dest); break;
+  case Info: m_info_dests.push_back(dest); break;
+  case Warn: m_warn_dests.push_back(dest); break;
+  }
+}
+
+inline void trace::StreamDestination::output(const std::string &str)
+{
+  m_stream << str << std::endl;
+}

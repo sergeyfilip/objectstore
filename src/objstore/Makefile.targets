@@ -1,0 +1,25 @@
+# -*-Makefile-*-
+#
+# Makefile for the object store
+#
+
+BUILD_TARGETS += $(TARGET_PATH)/objstore/stord$(EEXT)
+
+src-objstore-stord-sources := main mirror
+src-objstore-stord-libs := common httpd xml objparser client
+all-sources += $(foreach f, $(src-objstore-stord-sources), objstore/$(f))
+
+$(TARGET_PATH)/objstore/stord$(EEXT): \
+ $(foreach l, $(src-objstore-stord-libs), $(TARGET_PATH)/$(l)/lib$(l)$(LOEXT)) \
+ $(foreach f, $(src-objstore-stord-sources), $(TARGET_PATH)/objstore/$(f)$(OEXT)) \
+ $(TARGET_PATH)/version$(OEXT)
+	$(call cxxlink, $@, $^)
+
+$(TARGET_PATH)/objstore-$(VERSION)-$(BUILDNO).p5p: \
+	$(TARGET_PATH)/objstore/objstore.p5p
+	cp $< $@
+
+$(TARGET_PATH)/objstore/objstore.p5p:			\
+	$(TARGET_PATH)/objstore/stord$(EEXT) src/objstore/stord.xml	\
+	src/objstore/manifest.xml
+

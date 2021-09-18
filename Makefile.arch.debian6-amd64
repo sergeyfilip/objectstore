@@ -1,0 +1,42 @@
+# -*-Makefile-*-
+#
+# $Id: Makefile.arch.debian6-amd64,v 1.24 2013/10/06 11:48:08 vg Exp $
+#
+# Debian GNU/Linux 5 amd64 architecture
+#
+
+PLATFORMNAME = Debian 5 (amd64)
+
+# Do optimize
+# FLAG_OPTIMIZED := 1
+
+# Ship executables with full debug info
+FLAG_DEBUG := 1
+
+# Std. library debug enabled
+# FLAG_DEVEL := 1
+
+# Use prevent
+# FLAG_USE_PREVENT := 1
+
+# Point us at the right compiler
+CXX = /usr/bin/g++
+CC = /usr/bin/gcc
+
+# Configure the GNU toolchain
+include Makefile.tools.gnu_ld
+include Makefile.tools.gnu_cc
+
+SSL_CAPATH := "/etc/ssl/certs"
+
+CXXFLAGS += -D_BSD_SOURCE -I/usr/include/postgresql -pthread
+
+LDFLAGS += -lcrypto -lssl
+
+LDFLAGS_proxy += -lpq
+
+MODULES := httpd common democli xml sql proxy objstore serverbackup	\
+           client backup objparser sqlite tests
+
+PACKIT_TARGETS += $(TARGET_PATH)/proxy-$(VERSION)-$(BUILDNO).deb \
+		  $(TARGET_PATH)/serverbackup-$(VERSION)-$(BUILDNO).deb

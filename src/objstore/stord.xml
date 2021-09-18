@@ -1,0 +1,14 @@
+<!-- OS/API daemon configuration -->
+<stord>
+ <bindPort>8081</bindPort>
+ <workerThreads>20</workerThreads>
+ <root>/tmp/your-stord/data</root>
+ <maxConnections>40</maxConnections>
+ <dirCheck>full</dirCheck>
+ <mirror>
+   <host>localhost</host>
+   <port>8082</port>
+   <todoDir>/tmp/your-stord/todo</todoDir>
+   <threads>2</threads>
+ </mirror>
+</stord>

@@ -1,0 +1,36 @@
+# -*-Makefile-*-
+#
+# $Id: Makefile.arch.osx,v 1.7 2013/10/06 11:48:08 vg Exp $
+#
+# Debian GNU/Linux 5 amd64 architecture
+#
+
+PLATFORMNAME = Mac OS X
+
+# Do optimize
+# FLAG_OPTIMIZED := 1
+
+# Ship executables with full debug info
+FLAG_DEBUG := 1
+
+# Use prevent
+# FLAG_USE_PREVENT := 1
+
+# Point us at the right compiler
+CXX = g++
+
+# Configure the GNU toolchain
+include Makefile.tools.gnu_ld
+include Makefile.tools.gnu_cc
+
+CCFLAGS += -D_BSD_SOURCE -I/usr/include/postgresql -pthread
+CXXFLAGS += -D_BSD_SOURCE -I/usr/include/postgresql -pthread
+
+LDFLAGS += -lcrypto -lssl -lstdc++ -framework ApplicationServices
+
+LDFLAGS_proxy += -lpq
+
+MODULES := common democli xml	\
+           client backup objparser sqlite
+
+PACKIT_TARGETS += $(TARGET_PATH)/proxy-$(VERSION)-$(BUILDNO).deb

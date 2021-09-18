@@ -1,0 +1,155 @@
+# -*-Makefile-*-
+#
+# Makefile for the serverbackup client
+#
+
+BUILD_TARGETS += $(TARGET_PATH)/serverbackup/kservd$(EEXT)	\
+		 $(TARGET_PATH)/serverbackup/srestore$(EEXT)	\
+		$(TARGET_PATH)/serverbackup/connector$(EEXT)
+
+src-serverbackup-serverbackup-sources := main config engine command 
+src-serverbackup-serverbackup-libs := common xml client backup sqlite 
+src-serverbackup-srestore-sources := srestore config commandproc
+src-serverbackup-connector-sources := connector config commandproc
+src-serverbackup-connector-libs := common xml client objparser
+src-serverbackup-srestore-libs := common xml client objparser
+all-sources += $(foreach f, $(src-serverbackup-serverbackup-sources)	\
+			    $(src-serverbackup-srestore-sources),	\
+			    $(src-serverbackup-connector-sources),	\
+			    serverbackup/$(f))
+
+$(TARGET_PATH)/serverbackup/kservd$(EEXT): \
+ $(foreach l, $(src-serverbackup-serverbackup-libs), \
+              $(TARGET_PATH)/$(l)/lib$(l)$(LOEXT)) \
+ $(foreach f, $(src-serverbackup-serverbackup-sources), \
+              $(TARGET_PATH)/serverbackup/$(f)$(OEXT)) \
+ $(TARGET_PATH)/version$(OEXT)
+	$(call cxxlink, $@, $^)
+
+$(TARGET_PATH)/serverbackup/srestore$(EEXT): \
+ $(foreach l, $(src-serverbackup-srestore-libs), \
+              $(TARGET_PATH)/$(l)/lib$(l)$(LOEXT)) \
+ $(foreach f, $(src-serverbackup-srestore-sources), \
+              $(TARGET_PATH)/serverbackup/$(f)$(OEXT)) \
+ $(TARGET_PATH)/version$(OEXT)
+	$(call cxxlink, $@, $^)
+
+$(TARGET_PATH)/serverbackup/connector$(EEXT): \
+ $(foreach l, $(src-serverbackup-connector-libs), \
+              $(TARGET_PATH)/$(l)/lib$(l)$(LOEXT)) \
+ $(foreach f, $(src-serverbackup-connector-sources), \
+              $(TARGET_PATH)/serverbackup/$(f)$(OEXT)) \
+ $(TARGET_PATH)/version$(OEXT)
+	$(call cxxlink, $@, $^)
+
+
+.PHONY: package-serverbackup-deb package-serverbackup-rpm
+package-serverbackup-deb: $(TARGET_PATH)/serverbackup-$(VERSION)-$(BUILDNO).deb
+package-serverbackup-rpm: $(TARGET_PATH)/serverbackup-$(VERSION)-$(BUILDNO).rpm
+
+$(TARGET_PATH)/serverbackup-$(VERSION)-$(BUILDNO).deb:		\
+	src/serverbackup/Makefile.targets			\
+	$(TARGET_PATH)/serverbackup/kservd$(EEXT)		\
+	$(TARGET_PATH)/serverbackup/srestore$(EEXT)		\
+	$(TARGET_PATH)/serverbackup/connector$(EEXT)		\
+	src/serverbackup/debian6/serverbackup.xml		\
+	src/serverbackup/debian6/dpkg.control.in		\
+	src/serverbackup/debian6/serverbackup.initscript	\
+	src/serverbackup/debian6/dpkg.preinst
+#	Make sure we have a clean working directory
+	test -d $(TARGET_PATH)/serverbackup-dpkg 			\
+		&& rm -rf $(TARGET_PATH)/serverbackup-dpkg || true
+	mkdir -p $(TARGET_PATH)/serverbackup-dpkg/DEBIAN
+#	Set up file hierarchy
+#	(config file)
+	mkdir -p $(TARGET_PATH)/serverbackup-dpkg/etc/serverbackup
+	cp src/serverbackup/debian6/serverbackup.xml				\
+           $(TARGET_PATH)/serverbackup-dpkg/etc/serverbackup/serverbackup.xml
+#	(cache dir)
+	mkdir -p $(TARGET_PATH)/serverbackup-dpkg/var/lib/serverbackup
+#	(executable)
+	mkdir -p $(TARGET_PATH)/serverbackup-dpkg/usr/sbin
+	cp $(TARGET_PATH)/serverbackup/kservd$(EEXT)			\
+           $(TARGET_PATH)/serverbackup-dpkg/usr/sbin/kservd$(EEXT)
+	cp $(TARGET_PATH)/serverbackup/srestore$(EEXT)			\
+	   $(TARGET_PATH)/serverbackup-dpkg/usr/sbin/srestore$(EEXT)
+	cp $(TARGET_PATH)/serverbackup/connector$(EEXT)			\
+	   $(TARGET_PATH)/serverbackup-dpkg/usr/sbin/connector$(EEXT)	   
+
+#	(init script)
+	mkdir -p $(TARGET_PATH)/serverbackup-dpkg/etc/init.d
+	cp src/serverbackup/debian6/serverbackup.initscript		\
+           $(TARGET_PATH)/serverbackup-dpkg/etc/init.d/serverbackup
+#	MD5 sums
+	find $(TARGET_PATH)/serverbackup-dpkg -type f -print0 		\
+             | xargs -0 md5sum 					\
+             > $(TARGET_PATH)/serverbackup-dpkg/DEBIAN/md5sums
+#	Control file
+	sed -e "s/#VERSION#/$(VERSION)-$(BUILDNO)/" <		\
+		src/serverbackup/debian6/dpkg.control.in >	\
+		$(TARGET_PATH)/serverbackup-dpkg/DEBIAN/control
+#	Conf files
+	cp src/serverbackup/debian6/dpkg.conffiles \
+		$(TARGET_PATH)/serverbackup-dpkg/DEBIAN/conffiles
+	cp src/serverbackup/debian6/dpkg.preinst \
+		$(TARGET_PATH)/serverbackup-dpkg/DEBIAN/preinst
+	chmod 755 $(TARGET_PATH)/serverbackup-dpkg/DEBIAN/preinst
+#	In a fakeroot, set up permissions and actually build the package
+	fakeroot bash -c '\
+chown 0:0 -R $(TARGET_PATH)/serverbackup-dpkg/; \
+chmod 755 $(TARGET_PATH)/serverbackup-dpkg/etc/serverbackup; \
+chmod 644 $(TARGET_PATH)/serverbackup-dpkg/etc/serverbackup/serverbackup.xml; \
+chmod 755 $(TARGET_PATH)/serverbackup-dpkg/usr/sbin/kservd; \
+chmod 755 $(TARGET_PATH)/serverbackup-dpkg/usr/sbin/srestore; \
+chmod 755 $(TARGET_PATH)/serverbackup-dpkg/usr/sbin/connector; \
+chmod 755 $(TARGET_PATH)/serverbackup-dpkg/etc/init.d/serverbackup; \
+chmod 700 $(TARGET_PATH)/serverbackup-dpkg/var/lib/serverbackup; \
+dpkg-deb --build $(TARGET_PATH)/serverbackup-dpkg;'
+	mv -f $(TARGET_PATH)/serverbackup-dpkg.deb $@
+	rm -r $(TARGET_PATH)/serverbackup-dpkg
+
+
+
+
+$(TARGET_PATH)/serverbackup-$(VERSION)-$(BUILDNO).rpm:		\
+	src/serverbackup/Makefile.targets			\
+	$(TARGET_PATH)/serverbackup/kservd$(EEXT)		\
+	$(TARGET_PATH)/serverbackup/srestore$(EEXT)		\
+	$(TARGET_PATH)/serverbackup/connector$(EEXT)		\
+	src/serverbackup/centos5/serverbackup.spec.in		\
+	src/serverbackup/centos5/serverbackup.xml		\
+	src/serverbackup/centos5/serverbackup.initscript
+#	Make sure we have a clean working directory
+	test -d $(TARGET_PATH)/serverbackup-rpm && rm -rf	\
+		$(TARGET_PATH)/serverbackup-rpm || true
+	mkdir -p $(TARGET_PATH)/serverbackup-rpm/rpmroot
+	mkdir -p $(TARGET_PATH)/serverbackup-rpm/buildroot
+	mkdir -p $(TARGET_PATH)/serverbackup-rpm/rpmroot/{BUILD,RPMS/x86_64}
+#	Our hierarchy
+	mkdir -p $(TARGET_PATH)/serverbackup-rpm/buildroot/opt/serverbackup/sbin
+	mkdir -p $(TARGET_PATH)/serverbackup-rpm/buildroot/opt/serverbackup/var
+	mkdir -p $(TARGET_PATH)/serverbackup-rpm/buildroot/etc/serverbackup
+	mkdir -p $(TARGET_PATH)/serverbackup-rpm/buildroot/etc/init.d
+#	Copy files
+	cp src/serverbackup/centos5/serverbackup.xml			\
+	   $(TARGET_PATH)/serverbackup-rpm/buildroot/etc/serverbackup/
+	cp src/serverbackup/centos5/serverbackup.initscript			\
+	   $(TARGET_PATH)/serverbackup-rpm/buildroot/etc/init.d/serverbackup
+	cp $(TARGET_PATH)/serverbackup/kservd					\
+	   $(TARGET_PATH)/serverbackup-rpm/buildroot/opt/serverbackup/sbin/
+	cp $(TARGET_PATH)/serverbackup/connector				\
+	   $(TARGET_PATH)/serverbackup-rpm/buildroot/opt/serverbackup/sbin/
+	cp $(TARGET_PATH)/serverbackup/srestore					\
+	   $(TARGET_PATH)/serverbackup-rpm/buildroot/opt/serverbackup/sbin/
+#	Build RPM
+	sed -e 's,@@VERSION@@,$(VERSION),g' \
+	    -e 's,@@BUILDNO@@,$(BUILDNO),g' \
+	    -e 's,@@BUILDROOT@@,$(shell pwd)/$(TARGET_PATH)/serverbackup-rpm/buildroot,g' \
+	    < src/serverbackup/centos5/serverbackup.spec.in \
+	    > $(TARGET_PATH)/serverbackup-rpm/serverbackup.spec
+	rpmbuild -bb \
+		--define '_topdir $(shell pwd)/$(TARGET_PATH)/serverbackup-rpm/rpmroot'\
+		$(TARGET_PATH)/serverbackup-rpm/serverbackup.spec
+#	Move built package
+	mv -f $(TARGET_PATH)/serverbackup-rpm/rpmroot/RPMS/*/serverbackup-*.rpm $(TARGET_PATH)
+

@@ -1,0 +1,51 @@
+set name=pkg.fmri \
+    value=pkg://evalesco.com/keepitng-objstore@@@VERSION@@-@@BUILDNO@@
+
+set name=org.opensolaris.smf.fmri value="svc:/system/objstore"
+
+set name=pkg.description \
+    value="OS/API object storage daemon for Keepit NG"
+
+set name=pkg.summary value="OS/API daemon"
+
+set name=variant.arch value=i386
+
+set name=info.classification \
+    value="org.opensolaris.category.2008:Web Services/Application and Web Servers"
+
+#
+# Non-privileged user configuration
+#
+group groupname=stord
+
+user gecos-field="Non-privileged OS/API server account" \
+     group=stord username=stord \
+     home-dir=/opt/EVALobjstore \
+     login-shell=/usr/bin/bash
+
+# 
+# The binary installation
+#
+dir path=/opt/EVALobjstore group=bin mode=0755 owner=root
+dir path=/opt/EVALobjstore/sbin group=bin mode=0755 owner=root
+
+file @@TARGET_PATH@@/objstore/stord path=/opt/EVALobjstore/sbin/stord \
+     group=bin mode=0755 owner=root
+
+
+#
+# Configuration file
+#
+dir path=/etc/objstore group=bin mode=0755 owner=root
+file src/objstore/stord.xml path=/etc/objstore/stord.xml \
+     group=stord mode=0640 owner=root preserve=true
+
+#
+# Service management framework manifest
+#
+dir path=/var/svc/manifest/system/objstore group=sys mode=0755 owner=root
+file src/objstore/manifest.xml \
+     path=/var/svc/manifest/system/objstore/stord.xml \
+     group=sys mode=0644 owner=root \
+     restart_fmri=svc:/system/manifest-import:default
+

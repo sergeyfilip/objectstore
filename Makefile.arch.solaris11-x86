@@ -1,0 +1,36 @@
+# -*-Makefile-*-
+#
+# $Id: Makefile.arch.solaris11-x86,v 1.11 2013/09/03 11:36:46 joe Exp $
+#
+# Oracle Solaris 11 x86 architecture
+#
+
+PLATFORMNAME = Oracle Solaris 11 (x86)
+
+# Do optimize
+OPTIMIZED := 1
+
+# Use prevent
+# FLAG_USE_PREVENT := 1
+
+# Keep symbols
+FLAG_DEBUG := 1
+
+# Point us at the right compiler
+CXX = /usr/bin/g++
+LD = /usr/bin/gld
+
+# Configure the GNU toolchain
+include Makefile.tools.gnu_ld
+include Makefile.tools.gnu_cc
+
+# Configure the IPS
+include Makefile.tools.ips
+
+CXXFLAGS += -D_BSD_SOURCE -pthread
+
+LDFLAGS += -lcrypto -lsocket -lnsl -lssl
+
+MODULES := httpd common objstore xml objparser client
+
+PACKIT_TARGETS += $(TARGET_PATH)/objstore-$(VERSION)-$(BUILDNO).p5p

@@ -1,0 +1,139 @@
+//-*-C++-*-
+//
+//! \file common/semaphore.hcc
+//! Header-implementation of the semaphore calls
+//
+
+#include "error.hh"
+#include <errno.h>
+
+#if defined(__unix__) || defined(__APPLE__)
+# include <semaphore.h>
+#endif
+
+#if defined(_WIN32)
+# include <windows.h>
+#endif
+
+Semaphore::Semaphore(size_t init)
+{
+#if defined(__APPLE__)
+  std::ostringstream name;
+  // OSX does not support unnamed semaphores. We must make up a name.
+  { MutexLock l(m_sequence_mutex);
+    name << "sem" << std::hex << m_sequence++;
+  }
+  // remove sem if it exists... it probably doesn't
+  sem_unlink(name.str().c_str());
+  // now create a new one - initialized with count 0
+  do {
+    m_sem = sem_open(name.str().c_str(), O_CREAT, 0700, 0);
+  } while (m_sem == SEM_FAILED && errno == EINTR);
+  if (m_sem == SEM_FAILED)
+    throw syserror("sem_open", "creation of new semaphore");
+#endif
+
+# if defined(__unix__)
+  int rc = sem_init(&m_sem, 0, init);
+  if (rc)
+    throw syserror("sem_init", "creation of new semaphore");
+#endif
+
+#if defined(_WIN32)
+  m_sem = CreateSemaphore(0, 0, LONG_MAX, 0);
+  if (!m_sem)
+    throw syserror("CreateSemaphore", "creation of new semaphore");
+#endif
+}
+
+Semaphore::~Semaphore()
+{
+#if defined(_WIN32)
+  CloseHandle(m_sem);
+#endif
+#if defined(__unix__)
+  sem_destroy(&m_sem);
+#endif
+#if defined(__APPLE__)
+  sem_close(m_sem);
+#endif
+}
+
+void Semaphore::increment()
+{
+#if defined(__unix__)
+  while (-1 == sem_post(&m_sem))
+    if (errno != EINTR)
+      throw syserror("sem_post", "incrementing Semaphore");
+#elif defined(__APPLE__)
+  while (-1 == sem_post(m_sem))
+    if (errno != EINTR)
+      throw syserror("sem_post", "incrementing Semaphore");
+#elif defined(_WIN32)
+  if (!ReleaseSemaphore(m_sem, 1, 0))
+    throw syserror("ReleaseSemaphore", "incrementing semaphore");
+#else
+# error No sem increment
+#endif
+}
+
+void Semaphore::decrement()
+{
+#if defined(__unix__)
+  while (-1 == sem_wait(&m_sem))
+    if (errno != EINTR)
+      throw syserror("sem_wait", "decrementing Semaphore");
+#elif defined(__APPLE__)
+  while (-1 == sem_wait(m_sem))
+    if (errno != EINTR)
+      throw syserror("sem_wait", "decrementing Semaphore");
+#elif defined(_WIN32)
+  DWORD wrc = WaitForSingleObject(m_sem, INFINITE);
+  if (wrc == WAIT_OBJECT_0)
+    return;
+  throw error("Decrementing semaphore failed");
+#else
+# error No sem decrement
+#endif
+}
+
+#if defined(__unix__)
+bool Semaphore::decrement(const Time &timeout)
+{
+  const struct timespec tout(timeout.toTimespec());
+  while (-1 == sem_timedwait(&m_sem, &tout)) {
+    switch (errno) {
+    case ETIMEDOUT: return false;
+    case EINTR: continue; // retry
+    default: throw syserror("sem_timedwait", "decrementing Semaphore");
+    }
+  }
+  return true;
+}
+#endif
+
+#if defined(_WIN32)
+bool Semaphore::decrement(const Time &timeout)
+{
+  DWORD tout = INFINITE;
+  if (timeout < Time::END_OF_TIME) {
+    Time now = Time::now();
+    if (timeout <= now) {
+      tout = 0;
+    } else {
+      tout = (timeout - now).to_double() * 1000; // s -> ms
+    }
+  }
+
+  DWORD rc = WaitForSingleObject(m_sem, tout);
+
+  if (rc == WAIT_TIMEOUT)
+    return false;
+
+  if (rc == WAIT_OBJECT_0)
+    return true;
+
+  throw syserror("WaitForSingleObject", "waiting for semaphore with timeout");
+}
+#endif
+

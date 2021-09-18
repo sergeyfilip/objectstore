@@ -1,0 +1,62 @@
+# -*-Makefile-*-
+#
+# $Id: Makefile.targets,v 1.9 2013/08/08 13:50:40 joe Exp $
+#
+
+$(TARGET_PATH)/version.hh: Makefile.targets Makefile Makefile.arch.$(ARCH_NAME)
+	mkdir -p $(dir $@)
+	echo "// Auto generated" > $@
+	echo "#include <stdint.h>" >> $@
+	echo "extern const char *g_getVersion();" >> $@
+	echo "extern const char *g_getArchitecture();" >> $@
+	echo "extern uint32_t    g_getBuild();" >> $@
+	echo "extern const char *g_getCAFile();" >> $@
+	echo "extern const char *g_getCAPath();" >> $@
+	echo "namespace global_config {" >> $@
+ifndef SSL_CAFILE
+	echo " extern const char *cafile;" >> $@
+endif
+ifndef SSL_CAPATH
+	echo " extern const char *capath;" >> $@
+endif
+	echo "}" >> $@
+
+$(TARGET_PATH)/version.cc: $(TARGET_PATH)/version.hh
+	echo "// Auto generated" > $@
+	echo "#include \"version.hh\"" >> $@
+	echo "const char *g_getVersion() { return \"$(MAJORVERSION).$(MINORVERSION).$(RELEASE)-$(BUILDNO)\"; }" >> $@
+	echo "const char *g_getArchitecture() { return \"$(ARCH_NAME)\"; }" >> $@
+ifeq ($(BUILDNO),manual)
+	echo "uint32_t g_getBuild() { return 0; }" >> $@
+else
+	echo "uint32_t g_getBuild() { return $(BUILDNO); }" >> $@
+endif
+	echo "namespace global_config {" >> $@
+ifndef SSL_CAFILE
+	echo " const char *cafile;" >> $@
+endif
+ifndef SSL_CAPATH
+	echo " const char *capath;" >> $@
+endif
+	echo "}" >> $@
+ifdef SSL_CAFILE
+	echo "extern const char *g_getCAFile() { return \"$(SSL_CAFILE)\"; }" >> $@
+else
+	echo "extern const char *g_getCAFile() { return global_config::cafile; }" >> $@
+endif
+ifdef SSL_CAPATH
+	echo "extern const char *g_getCAPath() { return \"$(SSL_CAPATH)\"; }" >> $@
+else
+	echo "extern const char *g_getCAPath() { return global_config::capath; }" >> $@
+endif
+
+include src/Makefile.targets
+
+build: $(BUILD_TARGETS)
+
+regress: $(REGRESS_TARGETS)
+
+packit: $(PACKIT_TARGETS)
+
+clean:
+	rm -rf $(TARGET_PATH)

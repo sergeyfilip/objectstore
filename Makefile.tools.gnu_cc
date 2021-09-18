@@ -1,0 +1,113 @@
+# -*-Makefile-*-
+#
+# $Id: Makefile.tools.gnu_cc,v 1.7 2013/07/17 15:55:29 vg Exp $
+#
+# Configuration of GNU compilers
+#
+
+# We always warn on everything
+CXXFLAGS := -Wall -Werror -Wno-unused-function
+CCFLAGS := -Wall -Werror -Wno-unused-function
+
+# When developing, we want to be alerted to any warnings
+ifdef FLAG_DEVEL
+CXXFLAGS += -D_GLIBCXX_DEBUG
+endif
+
+# Set ANSI language variant
+CXXFLAGS += -ansi
+CCFLAGS += -ansi
+
+# We always enable debug info with GCC, then we strip the executables
+# afterwards This allows us to use real-world core-dumps against our
+# non-stripped copies of our executables
+CXXFLAGS += -g
+CCFLAGS += -g
+
+# Enable profiling if requested
+ifdef FLAG_PROFILE
+CXXFLAGS += -pg
+CCFLAGS += -pg
+endif
+
+# Enable optimization if requested
+ifdef FLAG_OPTIMIZED
+CXXFLAGS += -O3
+CCFLAGS += -O3
+endif
+
+# Add threading support
+CXXFLAGS += -pthread
+CCFLAGS += -pthread
+
+# Current working directory (root of tree)
+TROOT := $(shell pwd)
+
+# Add platform defines
+CCFLAGS += $(PLATFORMDEFINES)
+CXXFLAGS += $(PLATFORMDEFINES)
+
+# Extra include directories
+CXXFLAGS += -Isrc -I$(TARGET_PATH)
+CCFLAGS += -Isrc -I$(TARGET_PATH)
+
+# Object file extension
+OEXT = .o
+
+# Dependency files
+DEPEXT = .d
+
+CXXDEPFLAGS = $(CXXFLAGS) -MM
+RUN_CXX_DEP = $(CXX) $(CXXDEPFLAGS)
+
+# Coverity compiler name
+COVCXX := g++
+COVCC := gcc
+
+# Add Coverity Prevent support
+#
+# You can exclude a source file from being emitted into the code base
+# that is analysed, by setting the "COV_OMIT_sourcefile.cc"
+# variable. This should only be needed for third party sources we
+# embed in our tree though... Our own code should stand up to
+# scrutiny.
+#
+cov-translate-cxx-source = \
+	$(if $(COV_OMIT_$(notdir $(2))),, \
+	cov-translate --dir $(TARGET_PATH)/emit \
+	$(COVCXX) $(CXXFLAGS) \
+	$(CXXFLAGS_$(basename $(notdir $(2)))) -o $(1) -c $(2))
+cov-translate-c-source = \
+	$(if $(COV_OMIT_$(notdir $(2))),, \
+	cov-translate --dir $(TARGET_PATH)/emit \
+	$(COVCC) $(CCFLAGS) \
+	$(CCFLAGS_$(basename $(notdir $(2)))) -o $(1) -c $(2))
+
+# C++ source to object file (version.cc to version.o)
+$(TARGET_PATH)/version$(OEXT): $(TARGET_PATH)/version.cc Makefile.arch.$(ARCH_NAME)
+	@$(SHELL) -ec '[ -d $(dir $@) ] || mkdir -p $(dir $@)'
+	$(CXX) $(CXXFLAGS) $(CXXFLAGS_$(basename $(notdir $<))) -c $< -o $@
+
+# C++ source to object file
+$(TARGET_PATH)/%$(OEXT): src/%.cc $(ALLFILESDEP) $(TARGET_PATH)/version.hh $(TARGET_PATH)/version.cc Makefile.arch.$(ARCH_NAME)
+	@$(SHELL) -ec '[ -d $(dir $@) ] || mkdir -p $(dir $@)'
+	$(call checkdep, $<)
+	$(CXX) $(CXXFLAGS) $(CXXFLAGS_$(basename $(notdir $<))) -c $< -o $@
+	$(if $(FLAG_USE_PREVENT), $(call cov-translate-cxx-source, $@, $<))
+
+# C source to object file
+$(TARGET_PATH)/%$(OEXT): src/%.c $(ALLFILESDEP) Makefile.arch.$(ARCH_NAME)
+	@$(SHELL) -ec '[ -d $(dir $@) ] || mkdir -p $(dir $@)'
+	$(call checkdep, $<)
+	$(CC) $(CCFLAGS) $(CCFLAGS_$(basename $(notdir $<))) -c $< -o $@
+	$(if $(FLAG_USE_PREVENT), $(call cov-translate-c-source, $@, $<))
+
+# C++ source to dependency file
+$(TARGET_PATH)/%$(DEPEXT): src/%.cc $(TARGET_PATH)/version.hh $(TARGET_PATH)/version.cc
+	@echo "Building dependencies for $<..."
+	@$(SHELL) -ec '[ -d $(dir $@) ] || mkdir -p $(dir $@)'
+	@$(RUNDEP) $(SHELL) -ec '($(RUN_CXX_DEP) $<; echo) \
+        | sed -e '\''s#$(shell basename $*)\.o[ :]*#$(TARGET_PATH)/$*$(OEXT) $@ : #g'\'' \
+              -e '\''s#$(TROOT)/##'\'' -e    '\''s#\./##g'\''             \
+              -e '\''# \([^/ ]*\.[hc][hc]*\)# $(dir $<)\1#g'\'' > $@;     \
+        [ -s $@ ] || rm -f $@'

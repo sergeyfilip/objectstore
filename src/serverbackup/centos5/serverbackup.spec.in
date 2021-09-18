@@ -1,0 +1,45 @@
+Summary: Keepit Server Backup
+Name: serverbackup
+Version: @@VERSION@@
+Release: @@BUILDNO@@
+License: Commercial
+Group: Applications/Networking
+URL: https://ws.keepit.com
+Source: nosource
+BuildRoot: @@BUILDROOT@@
+
+%description
+Keepit Server Backup - online backup of your CentOS server
+
+%prep
+
+%build
+
+%install
+
+%files
+%attr(755,root,root) /etc/init.d/serverbackup
+%dir %attr(700,root,root) /etc/serverbackup
+%config(noreplace) %attr(600,root,root) /etc/serverbackup/serverbackup.xml
+%dir %attr(755,root,root) /opt/serverbackup
+%dir %attr(755,root,root) /opt/serverbackup/sbin
+%dir %attr(750,root,root) /opt/serverbackup/var
+%attr(755,root,root) /opt/serverbackup/sbin/kservd
+%attr(755,root,root) /opt/serverbackup/sbin/srestore
+%attr(755,root,root) /opt/serverbackup/sbin/connector
+%post
+
+if [[ $(sysctl -n fs.inotify.max_user_watches) -lt 1000000 ]]; then
+   cat <<EOF >> /etc/sysctl.conf
+#
+# Keepit serverbackup agent requires a watch for every directory
+# on your system in order to run CDP. This limit was automatically
+# added during installation of the serverbackup package.
+#
+# If you do not wish to have this high limit, you will probably
+# need to run your serverbackup agent without CDP enabled.
+#
+fs.inotify.max_user_watches=1000000
+EOF
+   sysctl -w fs.inotify.max_user_watches=1000000
+fi

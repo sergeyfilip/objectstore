@@ -1,0 +1,16 @@
+# -*-Makefile-*-
+#
+# Makefile for the demo client
+#
+
+BUILD_TARGETS += $(TARGET_PATH)/democli/democli$(EEXT)
+
+src-democli-democli-sources := main fsobject
+src-democli-democli-libs := common xml backup client sqlite
+all-sources += $(foreach f, $(src-democli-democli-sources), democli/$(f))
+
+$(TARGET_PATH)/democli/democli$(EEXT): \
+ $(foreach l, $(src-democli-democli-libs), $(TARGET_PATH)/$(l)/lib$(l)$(LOEXT)) \
+ $(foreach f, $(src-democli-democli-sources), $(TARGET_PATH)/democli/$(f)$(OEXT)) \
+ $(TARGET_PATH)/version$(OEXT)
+	$(call cxxlink, $@, $^)

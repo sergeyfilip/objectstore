@@ -1,0 +1,87 @@
+# -*-Makefile-*-
+#
+# $Id: Makefile.tools.gnu_ld,v 1.6 2013/09/03 08:44:05 joe Exp $
+#
+# Configuration of GNU LD
+#
+
+LDFLAGS = -L$(TARGET_PATH) -lm 
+LLDFLAGS := -t -r
+
+# We always link with debug info. Our final executable link target
+# will then strip the resulting executable if we did not select debug
+# info.
+LDFLAGS += -g
+
+# Executable file extension
+EEXT = 
+
+# Library extension
+LOEXT = .lo
+
+# Set linker options for threading
+LDFLAGS += -lpthread
+
+# Support dynamic loading
+LDFLAGS += -ldl
+
+LINKTEMP = /tmp/.link.$(LOGNAME)/$(PWD)/$(dir $(1))/
+
+# C++ executable linking
+cxxlink-noprofile = $(CXX) $(LDFLAGS)					 \
+                    $(LDFLAGS_$(basename $(notdir $(1)))) -o $(LINKTEMP)$(notdir $(1)) $(2)
+
+cxxlink-profile = $(CXX) $(LDFLAGS)					\
+                  $(LDFLAGS_$(basename $(notdir $(1)))) -pg -o $(LINKTEMP)$(notdir $(1)) $(2)
+
+DISABLEDCHECKERS := STACK_USE
+
+# Linking
+# Step 1: Find all TUs, write to linkfile-all
+# Step 2: Filter TUs from linkfile-all into linkfile
+# Step 3: Create new intermediate directory from linkfile
+#
+# When matching we use the target names (with $(OEXT)) but subst the
+# OEXT to '.c' - the .c will match both .c files and .cc files, so the
+# .c is not a typo.
+cov-link-emits = cov-link --dir $(TARGET_PATH)/emit \
+                          --collect --output-file $(1)-linkfile-all && \
+                 cov-link --dir $(TARGET_PATH)/emit \
+                          $(foreach s, $(2), --source-file-regex \
+				$(if $(findstring $(LOEXT), $(s)), \
+				 $(dir $(subst $(TARGET_PATH)/,src/,$(s))), \
+				 $(subst $(OEXT),.c,$(subst $(TARGET_PATH)/,src/,$(s))))) \
+                          --output-file $(1)-linkfile $(1)-linkfile-all && \
+                 cov-link --dir $(TARGET_PATH)/emit \
+                          --output-dir $(1)-linked $(1)-linkfile \
+
+cov-analyse = cov-analyze --dir $(1)-linked --all	\
+	      --strip-path "$(CURDIR)" \
+              --enable-constraint-fpp --enable-fnptr --enable-virtual   \
+              -j 2 $(foreach c, $(DISABLEDCHECKERS), --disable $(c))
+
+cov-commit = cov-commit-defects --dir $(1)-linked \
+             --stream "$(basename $(notdir $(1)))-$(ARCH_NAME)" \
+	--target "$(ARCH_NAME)" \
+	--version "$(BUILDNO)" \
+	--host im.ewan.evalesco.com \
+	--user bamboo --password bamb00
+
+
+cxxlink = $(SHELL) -ec '[ -d $(dir $(1)) ] || mkdir -p $(dir $(1))';	\
+	 rm -f $(1);							\
+	 $(SHELL) -c "mkdir -p $(LINKTEMP);	 			\
+          $(if $(filter $(basename $(notdir $(1))), $(FLAG_PROFILE)),	\
+          $(cxxlink-profile),						\
+          $(cxxlink-noprofile)) &&					\
+	  $(if $(FLAG_USE_PREVENT), $(cov-link-emits) && $(cov-analyse) \
+                                    && $(cov-commit) &&) \
+	  $(if $(FLAG_DEBUG), , cp $(LINKTEMP)$(notdir $(1)) $(1).debugsym &&  \
+                           strip $(LINKTEMP)$(notdir $(1)) &&)		\
+	  mv $(LINKTEMP)$(notdir $(1)) $(1)"
+
+# Library linking, incremental
+liblink = $(SHELL) -ec '[ -d $(dir $(1)) ] || mkdir -p $(dir $(1))';	\
+	  rm -f $(1);							\
+	  $(RUNLD) $(LD) $(LLDFLAGS) $(LDFLAGS_$(basename $(notdir $(1)))) \
+                    -o $(1) $(2)

@@ -1,0 +1,108 @@
+//-*-C++-*-
+///
+/// String utility routines
+///
+
+#ifndef COMMON_STRING_HCC
+#define COMMON_STRING_HCC
+
+#include "error.hh"
+#include "optional.hh"
+
+#include <typeinfo>
+#include <locale>
+#include <sstream>
+
+///
+/// Converter function to convert a string into "anything".
+///
+/// If "anything" is a std::string, then the input will be copied
+/// verbatim but checked for UTF-8 conformance.
+///
+template <class I>
+inline I string2Any(const std::string &s)
+{
+  std::istringstream i(s);
+  I res;
+  i >> res;
+  if (i.fail() && !i.eof())
+    throw error("Cannot convert string (stream failed)");
+
+  if (!i.eof())
+    throw error("Trailing data after string: \"" + s + "\"");
+
+  return res;
+}
+
+template <>
+inline std::string string2Any<std::string>(const std::string &s)
+{
+  validateUTF8(s);
+  return s;
+}
+
+template <>
+inline Optional<std::string> string2Any<Optional<std::string> >(const std::string &s)
+{
+  return string2Any<std::string>(s);
+}
+
+template <>
+inline char string2Any<char>(const std::string &s)
+{
+  if (s.size() != 1)
+    throw error("String \"" + s + "\" is not a single character");
+  return s[0];
+}
+
+template <>
+inline bool string2Any<bool>(const std::string &s)
+{
+  return s == "true" || s == "t";
+}
+
+///
+/// Utility template function for parsing any string as a decimal
+/// integer of specific size
+///
+template <class I>
+I string2AnyInt(const std::string &s)
+{
+  if (s.empty()) {
+    throw error("Cannot parse empty string to " + std::string(typeid(I).name()));
+  }
+
+  std::istringstream i(s);
+  I res;
+  i >> std::dec >> res;
+  if (i.fail())
+    throw error("Cannot parse " + std::string(typeid(I).name()));
+
+  if (!i.eof())
+    throw error("Trailing data after "
+                + std::string(typeid(I).name()));
+  return res;
+}
+
+///
+/// Same as string2AnyInt, only this routine parses a hex string
+///
+template <class I>
+I hex2AnyInt(const std::string &s)
+{
+  if (s.empty()) {
+    throw error("Cannot parse empty hex string");
+  }
+
+  std::istringstream i(s);
+  I res;
+  i >> std::hex >> res;
+  if (i.fail())
+    throw error("Cannot parse hex string");
+
+  if (!i.eof())
+    throw error("Trailing data after hex string");
+  return res;
+}
+
+#endif

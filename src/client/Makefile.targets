@@ -1,0 +1,15 @@
+# -*-Makefile-*-
+#
+# Target definitions for client library files
+#
+# $Id: Makefile.targets,v 1.1 2013/03/12 15:47:13 joe Exp $
+#
+
+BUILD_TARGETS += $(TARGET_PATH)/client/libclient$(LOEXT)
+
+src-client-sources := serverconnection
+all-sources += $(foreach f, $(src-client-sources), client/$(f))
+$(TARGET_PATH)/client/libclient$(LOEXT): \
+ $(foreach f, $(src-client-sources), $(TARGET_PATH)/client/$(f)$(OEXT))
+	$(call liblink, $@, $^)
+
